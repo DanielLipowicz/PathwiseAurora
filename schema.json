@@ -1,0 +1,90 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://pathwiseaurora.app/schema.json",
+  "title": "PathwiseAurora Graph Schema",
+  "description": "Schema dla plików JSON zawierających grafy decyzyjne dla aplikacji PathwiseAurora",
+  "type": "object",
+  "required": ["title", "nodes"],
+  "properties": {
+    "title": {
+      "type": "string",
+      "description": "Tytuł grafu decyzyjnego",
+      "minLength": 1
+    },
+    "nodes": {
+      "type": "array",
+      "description": "Tablica węzłów grafu",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/definitions/node"
+      },
+      "uniqueItems": false
+    }
+  },
+  "definitions": {
+    "node": {
+      "type": "object",
+      "description": "Pojedynczy węzeł w grafie decyzyjnym",
+      "required": ["id", "title", "body", "choices"],
+      "properties": {
+        "id": {
+          "description": "Unikalny identyfikator węzła. Dla zagnieżdżonych węzłów (np. '1.2.1', '1.2.2', '1.22') MUSI być stringiem. Proste ID mogą być liczbą lub stringiem (np. '1', 1).",
+          "oneOf": [
+            {
+              "type": "string",
+              "minLength": 1
+            },
+            {
+              "type": "number"
+            }
+          ]
+        },
+        "title": {
+          "type": "string",
+          "description": "Tytuł węzła wyświetlany w interfejsie",
+          "minLength": 1
+        },
+        "body": {
+          "type": "string",
+          "description": "Treść/opis węzła",
+          "minLength": 1
+        },
+        "choices": {
+          "type": "array",
+          "description": "Tablica dostępnych wyborów/opcji dla tego węzła",
+          "items": {
+            "$ref": "#/definitions/choice"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    },
+    "choice": {
+      "type": "object",
+      "description": "Pojedynczy wybór prowadzący do innego węzła",
+      "required": ["label", "to"],
+      "properties": {
+        "label": {
+          "type": "string",
+          "description": "Tekst wyświetlany na przycisku wyboru",
+          "minLength": 1
+        },
+        "to": {
+          "description": "Identyfikator docelowego węzła. Musi istnieć w tablicy nodes. Dla zagnieżdżonych ID (np. '1.2.1') MUSI być stringiem.",
+          "oneOf": [
+            {
+              "type": "string",
+              "minLength": 1
+            },
+            {
+              "type": "number"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}
+

@@ -1,0 +1,240 @@
+{
+    "title": "Complex Incident: Intermittent 500s After Release",
+    "nodes": [
+      {
+        "id": "1",
+        "title": "Critical incident: intermittent 500 errors after deployment",
+        "body": "Production users report random 500 responses on the main API within minutes after a new release.",
+        "choices": [
+          { "label": "Assess incident scope & impact", "to": "1.1" },
+          { "label": "Apply immediate mitigation (rollback / feature flag)", "to": "1.2" }
+        ]
+      },
+      {
+        "id": "1.1",
+        "title": "Assess incident scope & impact",
+        "body": "Check monitoring, logs, and business metrics to understand how many users and which endpoints are affected.",
+        "choices": [
+          { "label": "Errors limited to one service", "to": "2" },
+          { "label": "Multiple services impacted", "to": "3" }
+        ]
+      },
+      {
+        "id": "1.2",
+        "title": "Immediate mitigation",
+        "body": "Decide whether to rollback the deployment or disable risky feature flags while investigation continues.",
+        "choices": [
+          { "label": "Rollback deployment", "to": "1.2.1" },
+          { "label": "Toggle feature flags only", "to": "1.2.2" }
+        ]
+      },
+      {
+        "id": "1.2.1",
+        "title": "Rollback completed",
+        "body": "Deployment has been rolled back to the previous version. Verify if errors stop.",
+        "choices": [
+          { "label": "Errors stopped", "to": "9" },
+          { "label": "Errors continue", "to": "3" }
+        ]
+      },
+      {
+        "id": "1.2.2",
+        "title": "Feature flags toggled",
+        "body": "Risky features have been disabled. Check whether error rates go down.",
+        "choices": [
+          { "label": "Errors decreased significantly", "to": "4" },
+          { "label": "No noticeable change", "to": "3" }
+        ]
+      },
+      {
+        "id": "2",
+        "title": "Single service impacted",
+        "body": "Monitoring shows that only the Orders API service has elevated 500 rates.",
+        "choices": [
+          { "label": "Check deployment diff for Orders API", "to": "2.1" },
+          { "label": "Check dependency status (DB/cache/queues)", "to": "2.2" }
+        ]
+      },
+      {
+        "id": "2.1",
+        "title": "Inspect deployment diff for Orders API",
+        "body": "Review commits, configuration changes, environment variables, and migration scripts included in the last deployment.",
+        "choices": [
+          { "label": "Found risky DB-related changes", "to": "4" },
+          { "label": "Changes look harmless", "to": "2.3" }
+        ]
+      },
+      {
+        "id": "2.2",
+        "title": "Check dependencies health",
+        "body": "Verify health of the primary database, caching layer, and message queues used by the Orders API.",
+        "choices": [
+          { "label": "Database shows anomalies", "to": "4" },
+          { "label": "Cache layer unstable", "to": "5" },
+          { "label": "All dependencies look healthy", "to": "2.3" }
+        ]
+      },
+      {
+        "id": "2.3",
+        "title": "Correlate errors with traffic patterns",
+        "body": "Check whether 500 errors correlate with specific endpoints, payload sizes, tenants, or peaks of traffic.",
+        "choices": [
+          { "label": "Errors tied to one endpoint", "to": "6" },
+          { "label": "Errors appear random", "to": "3" }
+        ]
+      },
+      {
+        "id": "3",
+        "title": "Multiple services impacted",
+        "body": "Several services show elevated 500 levels. This suggests a shared dependency or infrastructure problem.",
+        "choices": [
+          { "label": "Check shared database cluster", "to": "4" },
+          { "label": "Check API gateway / load balancer", "to": "7" },
+          { "label": "Check network / DNS issues", "to": "8" }
+        ]
+      },
+      {
+        "id": "4",
+        "title": "Investigate database anomalies",
+        "body": "Database metrics show increased latency, lock contention, or errors after the deployment.",
+        "choices": [
+          { "label": "Open DB-focused debugging path", "to": "4.1" },
+          { "label": "Check recent DB migrations", "to": "4.2" }
+        ]
+      },
+      {
+        "id": "4.1",
+        "title": "DB-focused debugging (helper path)",
+        "body": "Deep dive into database health: slow queries, blocking transactions, and connection pool saturation.",
+        "choices": [
+          { "label": "Identify slow query introduced by release", "to": "6" },
+          { "label": "Connection pool saturation", "to": "4.3" },
+          { "label": "No obvious DB cause", "to": "3" }
+        ]
+      },
+      {
+        "id": "4.2",
+        "title": "Check DB migrations",
+        "body": "Review migration history and logs: long-running migrations, schema changes, or failed rollbacks.",
+        "choices": [
+          { "label": "Migration locked tables", "to": "4.3" },
+          { "label": "Migrations clean", "to": "4.1" }
+        ]
+      },
+      {
+        "id": "4.3",
+        "title": "Connection pool / locking issue",
+        "body": "Applications exhaust DB connections or hold long transactions, causing random 500s under load.",
+        "choices": [
+          { "label": "Tune pool size & timeouts", "to": "9" },
+          { "label": "Introduce query optimizations", "to": "9" }
+        ]
+      },
+      {
+        "id": "5",
+        "title": "Cache layer instability",
+        "body": "Redis/Cache cluster shows timeouts or high error rates affecting multiple services.",
+        "choices": [
+          { "label": "Bypass cache for critical paths", "to": "5.1" },
+          { "label": "Scale or restart cache nodes", "to": "5.2" }
+        ]
+      },
+      {
+        "id": "5.1",
+        "title": "Bypass cache",
+        "body": "Temporarily disable caching or switch to a degraded mode to reduce dependency on the failing cache.",
+        "choices": [
+          { "label": "Errors drop after bypass", "to": "9" },
+          { "label": "Errors persist", "to": "3" }
+        ]
+      },
+      {
+        "id": "5.2",
+        "title": "Scale / restart cache cluster",
+        "body": "Scale up cache capacity, restart unhealthy nodes, and verify reconnection from services.",
+        "choices": [
+          { "label": "Stability restored", "to": "9" },
+          { "label": "Still unstable", "to": "8" }
+        ]
+      },
+      {
+        "id": "6",
+        "title": "Endpoint-specific failure",
+        "body": "500 errors occur mostly on a specific endpoint or use-case (e.g., checkout, bulk update).",
+        "choices": [
+          { "label": "Reproduce failing request in lower environment", "to": "6.1" },
+          { "label": "Enable detailed logging for that endpoint", "to": "6.2" }
+        ]
+      },
+      {
+        "id": "6.1",
+        "title": "Reproduce in staging",
+        "body": "Run the problematic requests in a staging or test environment with the same config as production.",
+        "choices": [
+          { "label": "Issue reproduced", "to": "6.3" },
+          { "label": "Cannot reproduce", "to": "7" }
+        ]
+      },
+      {
+        "id": "6.2",
+        "title": "Enable detailed logging",
+        "body": "Temporarily increase log level and add correlation IDs to trace failing requests end-to-end.",
+        "choices": [
+          { "label": "Found exception root cause", "to": "6.3" },
+          { "label": "Logs still inconclusive", "to": "7" }
+        ]
+      },
+      {
+        "id": "6.3",
+        "title": "Identify application bug",
+        "body": "A specific null reference, validation gap, or race condition in the new release is identified.",
+        "choices": [
+          { "label": "Create hotfix and deploy", "to": "9" },
+          { "label": "Feature too risky, disable permanently", "to": "9" }
+        ]
+      },
+      {
+        "id": "7",
+        "title": "Check API gateway / load balancer",
+        "body": "Investigate routing rules, timeouts, error mapping, and recent changes to the gateway configuration.",
+        "choices": [
+          { "label": "Gateway misconfiguration found", "to": "7.1" },
+          { "label": "Gateway looks fine", "to": "8" }
+        ]
+      },
+      {
+        "id": "7.1",
+        "title": "Fix gateway configuration",
+        "body": "Correct routes, timeouts, or health check settings and reload the gateway configuration.",
+        "choices": [
+          { "label": "Errors gone after fix", "to": "9" },
+          { "label": "Errors remain", "to": "8" }
+        ]
+      },
+      {
+        "id": "8",
+        "title": "Network / DNS investigation",
+        "body": "Look for intermittent network failures, DNS resolution issues, or TLS handshake errors.",
+        "choices": [
+          { "label": "Network issue confirmed", "to": "8.1" },
+          { "label": "No network-level issue", "to": "3" }
+        ]
+      },
+      {
+        "id": "8.1",
+        "title": "Mitigate network issue",
+        "body": "Work with infrastructure/network team to reroute traffic, update DNS, or fix TLS configuration.",
+        "choices": [
+          { "label": "Stability restored", "to": "9" },
+          { "label": "Still unstable", "to": "3" }
+        ]
+      },
+      {
+        "id": "9",
+        "title": "Incident resolved – document and prevent regression",
+        "body": "Error rates are back to normal. Document root cause, impact, and fixes, and define follow-up actions (tests, alerts, runbooks).",
+        "choices": []
+      }
+    ]
+  }
+  

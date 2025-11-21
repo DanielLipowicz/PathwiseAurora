@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Debugger Docs – Paragraph List (MVP1)</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header>
+    <div class="left">
+      <h1 contenteditable id="graphTitle" title="Click to edit title">Debugger Docs – Sample Graph</h1>
+      <span class="badge" id="validationBadge">Validation: OK</span>
+    </div>
+    <div class="right">
+      <input type="file" id="importFile" accept="application/json" class="hidden" />
+      <button id="btnImport">Import JSON</button>
+      <button id="btnExport" class="primary">Export JSON</button>
+      <button id="btnExportSession">Save Session Flow</button>
+      <button id="btnNewNode">New Node</button>
+    </div>
+  </header>
+
+  <main class="container">
+    <!-- Left panel: list + node editor -->
+    <section class="card">
+      <div class="row" style="margin-bottom:8px">
+        <button id="btnViewList" class="view-switcher active">List</button>
+        <button id="btnViewTiles" class="view-switcher">Tiles</button>
+      </div>
+      <div class="row">
+        <input id="filterInput" type="text" placeholder="Filter nodes (id/title/content)…" style="width:100%" />
+        <button id="btnClearFilter" class="ghost" title="Clear (Esc)">Clear</button>
+      </div>
+      <div class="divider"></div>
+      <div class="list" id="nodeList"></div>
+      <div class="tiles-view hidden" id="tilesView">
+        <svg id="connectionsSvg" style="position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:none; z-index:1;"></svg>
+        <div id="tilesContainer" style="position:relative; z-index:2;"></div>
+      </div>
+    </section>
+
+    <!-- Resize handle -->
+    <div class="resize-handle" id="resizeHandle"></div>
+
+    <!-- Right panel: runner -->
+    <section class="card runner">
+      <div class="row" style="justify-content:space-between; align-items:flex-end;">
+        <div class="col" style="flex:1">
+          <label class="muted">Current Node</label>
+          <div class="row" style="gap:6px; align-items:center;">
+            <input type="text" id="runnerNodeId" placeholder="ID (e.g. 1.1)" style="width:110px" />
+            <button id="btnJump">Go</button>
+            <button id="btnBack" class="ghost" title="Back (←)">Back</button>
+            <button id="btnReset" class="warn" title="Reset session">Reset</button>
+          </div>
+        </div>
+        <div class="col" style="align-items:flex-end">
+          <label class="muted">Start</label>
+          <select id="startSelect" style="min-width:220px"></select>
+          <button id="btnStart" class="primary">Start</button>
+        </div>
+      </div>
+      <div class="divider"></div>
+      <div id="runnerView" class="col"></div>
+      <div class="divider"></div>
+      <div>
+        <div class="muted" style="margin-bottom:6px">History</div>
+        <div id="history" class="history"></div>
+      </div>
+    </section>
+  </main>
+
+  <template id="nodeItemTpl">
+    <div class="node-item">
+      <div style="min-width:42px; text-align:right" class="muted">#<span class="nid">0</span></div>
+      <div class="col" style="flex:1">
+        <input class="ntitle" type="text" placeholder="Title" />
+        <textarea class="nbody" rows="3" placeholder="Content (step/problem description)"></textarea>
+        <div class="choices"></div>
+        <button class="btnAddChoice" style="margin-top:6px">Add Choice</button>
+        <div class="footer">
+          <div class="row" style="gap:6px">
+            <span class="badge warn hidden warn-targets">Missing target!</span>
+            <span class="badge danger hidden warn-empty">Empty title/content</span>
+          </div>
+          <div class="row" style="gap:6px">
+            <button class="btnAddChild">Add Child</button>
+            <button class="btnClone">Clone</button>
+            <button class="btnDelete" class="danger">Delete</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </template>
+
+  <template id="choiceRowTpl">
+    <div class="choice-row">
+      <input class="clabel" type="text" placeholder="Label (e.g. positive)" />
+      <input class="cto" type="text" placeholder="To # (e.g. 1.1)" />
+      <button class="btnRemChoice">Remove</button>
+    </div>
+  </template>
+
+  <!-- Scripts in correct order -->
+  <script src="data.js"></script>
+  <script src="validation.js"></script>
+  <script src="render.js"></script>
+  <script src="runner.js"></script>
+  <script src="io.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
+
