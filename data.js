@@ -161,9 +161,27 @@ function seedIfEmpty() {
     ]
   };
   const startNode = graph.nodes.find(n => n.id === '1');
-  session = { 
-    currentNodeId: '1', 
-    history: startNode ? [createHistoryEntry(startNode)] : [] 
+  session = {
+    currentNodeId: '1',
+    history: startNode ? [createHistoryEntry(startNode)] : []
   };
+}
+
+// --- New Session ---
+function newSession() {
+  if (!confirm('Are you sure you want to start a new session? This will remove all current steps and cannot be undone.')) {
+    return;
+  }
+  graph = {
+    title: 'New Process',
+    nodes: []
+  };
+  session = {
+    currentNodeId: null,
+    history: []
+  };
+  saveLocal();
+  renderAll();
+  validateGraph();
 }
 

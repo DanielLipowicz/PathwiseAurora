@@ -12,6 +12,7 @@ const els = {
   btnExport: document.getElementById('btnExport'),
   btnExportSession: document.getElementById('btnExportSession'),
   btnNewNode: document.getElementById('btnNewNode'),
+  btnNewSession: document.getElementById('btnNewSession'),
   btnViewList: document.getElementById('btnViewList'),
   btnViewTiles: document.getElementById('btnViewTiles'),
   startSelect: document.getElementById('startSelect'),
@@ -30,6 +31,7 @@ els.title.addEventListener('input', () => { graph.title = els.title.textContent.
 els.btnNewNode.onclick = () => { graph.nodes.push({ id: nextId(), title:'New Node', body:'Description…', choices:[] }); saveLocal(); renderAll(); validateGraph(); };
 els.btnExport.onclick = exportJson;
 els.btnExportSession.onclick = exportSession;
+els.btnNewSession.onclick = newSession;
 els.btnImport.onclick = () => els.importFile.click();
 els.importFile.onchange = (e) => { const f = e.target.files[0]; if (f) importJson(f); e.target.value=''; };
 els.filter.addEventListener('input', () => { 
