@@ -46,8 +46,10 @@ export class DOMRegistry {
       choiceRowTpl: document.getElementById('choiceRowTpl'),
       mainView: document.getElementById('mainView'),
       nodesPageContainer: document.getElementById('nodesPageContainer'),
+      knowledgeGapsContainer: document.getElementById('knowledgeGapsContainer'),
       btnNavMain: document.getElementById('btnNavMain'),
-      btnNavNodes: document.getElementById('btnNavNodes')
+      btnNavNodes: document.getElementById('btnNavNodes'),
+      btnNavGaps: document.getElementById('btnNavGaps')
     };
   }
 

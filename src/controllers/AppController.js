@@ -22,6 +22,7 @@ import { RunnerView } from '../views/RunnerView.js';
 import { HistoryView } from '../views/HistoryView.js';
 import { TilesView } from '../views/TilesView.js';
 import { ErrorsView } from '../views/ErrorsView.js';
+import { KnowledgeGapsView } from '../views/KnowledgeGapsView.js';
 import { migrateHistory, byId, createHistoryEntry, getPrevSibling, getNextSibling } from '../utils/NodeUtils.js';
 import { compareIds } from '../utils/IdUtils.js';
 
@@ -53,6 +54,7 @@ export class AppController {
     this.historyView = new HistoryView(this.state, this.eventBus, this.dom);
     this.tilesView = new TilesView(this.state, this.eventBus, this.dom);
     this.errorsView = new ErrorsView(this.validation, this.eventBus, this.dom);
+    this.knowledgeGapsView = new KnowledgeGapsView(this.state, this.eventBus, this.dom);
 
     // Set view manager reference for tiles view
     this.tilesView.setViewManager(this.viewManager);
@@ -301,32 +303,84 @@ export class AppController {
         this.switchToPage('nodes');
       };
     }
+
+    if (els.btnNavGaps) {
+      els.btnNavGaps.onclick = () => {
+        this.switchToPage('gaps');
+      };
+    }
+
+    // Handle gaps page navigation to nodes
+    this.eventBus.on('gaps:goto-node', ({ nodeId, choiceIndex }) => {
+      // Switch to nodes page
+      this.switchToPage('nodes');
+      // Focus on the node after a short delay to allow render
+      setTimeout(() => {
+        this.nodesPageView.focusOnNode(nodeId);
+        // If there's a specific choice index, scroll to it
+        if (choiceIndex !== undefined && choiceIndex !== '') {
+          const choiceIdx = parseInt(choiceIndex, 10);
+          if (!isNaN(choiceIdx)) {
+            setTimeout(() => {
+              const container = this.dom.get('nodesPageContainer');
+              if (container) {
+                const nodeCard = container.querySelector(`[data-node-id="${String(nodeId)}"]`);
+                if (nodeCard) {
+                  const choiceItem = nodeCard.querySelector(`[data-choice-index="${choiceIdx}"]`);
+                  if (choiceItem) {
+                    choiceItem.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    const choiceInput = choiceItem.querySelector('.choice-label-input, .choice-target-input');
+                    if (choiceInput) {
+                      choiceInput.focus();
+                    }
+                  }
+                }
+              }
+            }, 400);
+          }
+        }
+      }, 100);
+    });
   }
 
   /**
-   * Switch between main view and nodes page
-   * @param {string} page - Page name ('main' or 'nodes')
+   * Switch between main view, nodes page, and gaps page
+   * @param {string} page - Page name ('main', 'nodes', or 'gaps')
    */
   switchToPage(page) {
     const mainView = this.dom.get('mainView');
     const nodesPageContainer = this.dom.get('nodesPageContainer');
+    const knowledgeGapsContainer = this.dom.get('knowledgeGapsContainer');
     const btnNavMain = this.dom.get('btnNavMain');
     const btnNavNodes = this.dom.get('btnNavNodes');
+    const btnNavGaps = this.dom.get('btnNavGaps');
+
+    // Hide all pages first
+    if (mainView) mainView.classList.add('hidden');
+    if (nodesPageContainer) nodesPageContainer.classList.add('hidden');
+    if (knowledgeGapsContainer) knowledgeGapsContainer.classList.add('hidden');
+    
+    // Remove active state from all nav buttons
+    if (btnNavMain) btnNavMain.classList.remove('active');
+    if (btnNavNodes) btnNavNodes.classList.remove('active');
+    if (btnNavGaps) btnNavGaps.classList.remove('active');
 
     if (page === 'nodes') {
       this.currentPage = 'nodes';
-      if (mainView) mainView.classList.add('hidden');
       if (nodesPageContainer) nodesPageContainer.classList.remove('hidden');
-      if (btnNavMain) btnNavMain.classList.remove('active');
       if (btnNavNodes) btnNavNodes.classList.add('active');
       // Render nodes page
       this.nodesPageView.render();
+    } else if (page === 'gaps') {
+      this.currentPage = 'gaps';
+      if (knowledgeGapsContainer) knowledgeGapsContainer.classList.remove('hidden');
+      if (btnNavGaps) btnNavGaps.classList.add('active');
+      // Render gaps page
+      this.knowledgeGapsView.render();
     } else {
       this.currentPage = 'main';
       if (mainView) mainView.classList.remove('hidden');
-      if (nodesPageContainer) nodesPageContainer.classList.add('hidden');
       if (btnNavMain) btnNavMain.classList.add('active');
-      if (btnNavNodes) btnNavNodes.classList.remove('active');
     }
   }
 
@@ -450,6 +504,9 @@ export class AppController {
     
     // Initialize nodes page (but keep it hidden until user navigates)
     this.nodesPageView.render();
+    
+    // Initialize gaps page (but keep it hidden until user navigates)
+    this.knowledgeGapsView.render();
   }
 }
 
