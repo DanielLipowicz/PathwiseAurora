@@ -157,6 +157,11 @@ export class AppController {
       this.historyView.render();
     });
 
+    this.eventBus.on('history:tags-updated', (entry) => {
+      this.storage.save(this.state.getGraph().toJSON(), this.state.getSession().toJSON());
+      this.historyView.render();
+    });
+
     // Node updates - don't re-render nodes page to prevent focus loss while typing
     // Data is already updated directly in event handlers
     // this.eventBus.on('node:updated', () => {

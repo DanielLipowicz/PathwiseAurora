@@ -127,14 +127,20 @@ export class ImportExportService {
           }
           session = {
             currentNodeId: sessionData.currentNodeId ?? null,
-            history: sessionData.history
+            history: sessionData.history.map(entry => ({
+              id: entry.id,
+              title: entry.title || '',
+              body: entry.body || '',
+              comment: entry.comment || '',
+              tags: Array.isArray(entry.tags) ? entry.tags : []
+            }))
           };
         } else {
           // No session in export - set default
           const firstNode = graph.nodes[0];
           session = {
             currentNodeId: firstNode?.id ?? null,
-            history: firstNode ? [{ id: firstNode.id, title: firstNode.title, body: firstNode.body, comment: '' }] : []
+            history: firstNode ? [{ id: firstNode.id, title: firstNode.title, body: firstNode.body, comment: '', tags: [] }] : []
           };
         }
 

@@ -125,7 +125,8 @@ export class NavigationController {
         id: String(toId),
         title: `#${toId} (missing)`,
         body: 'Target node does not exist',
-        comment: ''
+        comment: '',
+        tags: []
       });
       this.storage.save(graph.toJSON(), session.toJSON());
       this.url.updateUrl(String(toId));
@@ -151,7 +152,13 @@ export class NavigationController {
     const currentIdx = session.history.length - 1;
     if (currentIdx > 0) {
       const prevEntry = session.history[currentIdx - 1];
-      session.currentNodeId = prevEntry ? prevEntry.id : null;
+      // Handle both old format (string/number) and new format (object)
+      if (typeof prevEntry === 'object' && prevEntry !== null) {
+        session.currentNodeId = prevEntry.id || null;
+      } else {
+        // Old format: entry is just the ID
+        session.currentNodeId = prevEntry;
+      }
       this.storage.save(this.state.getGraph().toJSON(), session.toJSON());
       this.url.updateUrl(session.currentNodeId);
       this.state.setSession(session);

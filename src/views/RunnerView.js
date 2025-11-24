@@ -20,6 +20,7 @@ export class RunnerView {
     this.events.on('graph:changed', () => this.render());
     this.events.on('state:updated', () => this.render());
     this.events.on('navigation:advanced', () => this.render());
+    this.events.on('history:tags-updated', () => this.render());
   }
 
   /**
@@ -184,7 +185,7 @@ export class RunnerView {
       } else if (session.currentNodeId && session.history.length > 0) {
         const node = byId(session.currentNodeId, graph.nodes);
         if (node) {
-          const newEntry = { id: node.id, title: node.title, body: node.body, comment: commentTextarea.value };
+          const newEntry = { id: node.id, title: node.title, body: node.body, comment: commentTextarea.value, tags: [] };
           session.history.push(newEntry);
           currentHistoryEntry = newEntry;
           this.events.emit('history:entry-added', newEntry);
@@ -192,6 +193,122 @@ export class RunnerView {
       }
     };
     view.appendChild(commentTextarea);
+
+    // Tags/Notes section
+    const tagsDivider = document.createElement('div');
+    tagsDivider.className = 'divider';
+    tagsDivider.style.marginTop = '16px';
+    tagsDivider.style.marginBottom = '12px';
+    view.appendChild(tagsDivider);
+
+    const tagsLabel = document.createElement('label');
+    tagsLabel.className = 'muted';
+    tagsLabel.style.marginBottom = '6px';
+    tagsLabel.textContent = 'Tags / Notes (e.g. "needs clarification", "customer reacted strongly", "requires SME review")';
+    view.appendChild(tagsLabel);
+
+    const tagsContainer = document.createElement('div');
+    tagsContainer.className = 'col';
+    tagsContainer.style.gap = '8px';
+    tagsContainer.style.marginBottom = '8px';
+
+    // Display existing tags
+    const tagsDisplay = document.createElement('div');
+    tagsDisplay.className = 'row';
+    tagsDisplay.style.flexWrap = 'wrap';
+    tagsDisplay.style.gap = '6px';
+    tagsDisplay.style.minHeight = '32px';
+
+    const updateTagsDisplay = () => {
+      tagsDisplay.innerHTML = '';
+      const tags = currentHistoryEntry?.tags || [];
+      tags.forEach((tag, idx) => {
+        const tagPill = document.createElement('span');
+        tagPill.className = 'badge';
+        tagPill.style.cursor = 'pointer';
+        tagPill.textContent = tag;
+        tagPill.title = 'Click to remove';
+        tagPill.onclick = () => {
+          if (currentHistoryEntry) {
+            currentHistoryEntry.tags = currentHistoryEntry.tags.filter((_, i) => i !== idx);
+            if (!Array.isArray(currentHistoryEntry.tags)) currentHistoryEntry.tags = [];
+            updateTagsDisplay();
+            this.events.emit('history:tags-updated', currentHistoryEntry);
+          }
+        };
+        tagsDisplay.appendChild(tagPill);
+      });
+    };
+
+    updateTagsDisplay();
+    tagsContainer.appendChild(tagsDisplay);
+
+    // Add tag input
+    const tagInputRow = document.createElement('div');
+    tagInputRow.className = 'row';
+    tagInputRow.style.gap = '8px';
+    tagInputRow.style.alignItems = 'center';
+
+    const tagInput = document.createElement('input');
+    tagInput.type = 'text';
+    tagInput.placeholder = 'Enter tag and press Enter or click Add';
+    tagInput.style.flex = '1';
+    tagInput.onkeydown = (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        const tagValue = tagInput.value.trim();
+        if (tagValue) {
+          if (!currentHistoryEntry) {
+            const node = byId(session.currentNodeId, graph.nodes);
+            if (node) {
+              const newEntry = { id: node.id, title: node.title, body: node.body, comment: '', tags: [tagValue] };
+              session.history.push(newEntry);
+              currentHistoryEntry = newEntry;
+              this.events.emit('history:entry-added', newEntry);
+            }
+          } else {
+            if (!Array.isArray(currentHistoryEntry.tags)) currentHistoryEntry.tags = [];
+            if (!currentHistoryEntry.tags.includes(tagValue)) {
+              currentHistoryEntry.tags.push(tagValue);
+              this.events.emit('history:tags-updated', currentHistoryEntry);
+            }
+          }
+          tagInput.value = '';
+          updateTagsDisplay();
+        }
+      }
+    };
+
+    const tagAddBtn = document.createElement('button');
+    tagAddBtn.textContent = 'Add';
+    tagAddBtn.className = 'ghost';
+    tagAddBtn.onclick = () => {
+      const tagValue = tagInput.value.trim();
+      if (tagValue) {
+        if (!currentHistoryEntry) {
+          const node = byId(session.currentNodeId, graph.nodes);
+          if (node) {
+            const newEntry = { id: node.id, title: node.title, body: node.body, comment: '', tags: [tagValue] };
+            session.history.push(newEntry);
+            currentHistoryEntry = newEntry;
+            this.events.emit('history:entry-added', newEntry);
+          }
+        } else {
+          if (!Array.isArray(currentHistoryEntry.tags)) currentHistoryEntry.tags = [];
+          if (!currentHistoryEntry.tags.includes(tagValue)) {
+            currentHistoryEntry.tags.push(tagValue);
+            this.events.emit('history:tags-updated', currentHistoryEntry);
+          }
+        }
+        tagInput.value = '';
+        updateTagsDisplay();
+      }
+    };
+
+    tagInputRow.appendChild(tagInput);
+    tagInputRow.appendChild(tagAddBtn);
+    tagsContainer.appendChild(tagInputRow);
+    view.appendChild(tagsContainer);
 
     // Decision option section
     const decisionDivider = document.createElement('div');

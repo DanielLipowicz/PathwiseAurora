@@ -25,7 +25,8 @@ export class Session {
         id: entry.id,
         title: entry.title || '',
         body: entry.body || '',
-        comment: entry.comment || ''
+        comment: entry.comment || '',
+        tags: Array.isArray(entry.tags) ? entry.tags : []
       }))
     };
   }
@@ -41,7 +42,7 @@ export class Session {
     }
     return new Session({
       currentNodeId: node.id,
-      history: [{ id: node.id, title: node.title, body: node.body, comment: '' }]
+      history: [{ id: node.id, title: node.title, body: node.body, comment: '', tags: [] }]
     });
   }
 }

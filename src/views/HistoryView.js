@@ -16,6 +16,7 @@ export class HistoryView {
     this.events.on('history:render-requested', () => this.render());
     this.events.on('history:comment-updated', () => this.render());
     this.events.on('history:entry-added', () => this.render());
+    this.events.on('history:tags-updated', () => this.render());
   }
 
   /**
@@ -37,6 +38,7 @@ export class HistoryView {
       const entryTitle = (typeof entry === 'object' && entry !== null) ? (entry.title || '') : '';
       const entryBody = (typeof entry === 'object' && entry !== null) ? (entry.body || '') : '';
       const entryComment = (typeof entry === 'object' && entry !== null) ? (entry.comment || '') : '';
+      const entryTags = (typeof entry === 'object' && entry !== null) ? (Array.isArray(entry.tags) ? entry.tags : []) : [];
 
       const historyItem = document.createElement('div');
       historyItem.className = 'history-item';
@@ -68,6 +70,23 @@ export class HistoryView {
         comment.className = 'history-comment';
         comment.textContent = entryComment;
         content.appendChild(comment);
+      }
+
+      // Add tags if exist
+      if (entryTags && entryTags.length > 0) {
+        const tagsContainer = document.createElement('div');
+        tagsContainer.className = 'row';
+        tagsContainer.style.flexWrap = 'wrap';
+        tagsContainer.style.gap = '4px';
+        tagsContainer.style.marginTop = '6px';
+        entryTags.forEach(tag => {
+          const tagPill = document.createElement('span');
+          tagPill.className = 'badge';
+          tagPill.style.fontSize = '0.85em';
+          tagPill.textContent = tag;
+          tagsContainer.appendChild(tagPill);
+        });
+        content.appendChild(tagsContainer);
       }
 
       // Delete button

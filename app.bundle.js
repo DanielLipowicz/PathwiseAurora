@@ -315,7 +315,8 @@
           id: entry.id,
           title: entry.title || "",
           body: entry.body || "",
-          comment: entry.comment || ""
+          comment: entry.comment || "",
+          tags: Array.isArray(entry.tags) ? entry.tags : []
         }))
       };
     }
@@ -330,7 +331,7 @@
       }
       return new _Session({
         currentNodeId: node.id,
-        history: [{ id: node.id, title: node.title, body: node.body, comment: "" }]
+        history: [{ id: node.id, title: node.title, body: node.body, comment: "", tags: [] }]
       });
     }
   };
@@ -584,7 +585,7 @@
   function createHistoryEntry(node) {
     if (!node)
       return null;
-    return { id: node.id, title: node.title, body: node.body, comment: "" };
+    return { id: node.id, title: node.title, body: node.body, comment: "", tags: [] };
   }
   function migrateHistory(oldHistory, graphData) {
     if (!oldHistory || !Array.isArray(oldHistory))
@@ -597,9 +598,9 @@
     return oldHistory.map((id) => {
       const node = findNodeById(id);
       if (node) {
-        return { id: node.id, title: node.title, body: node.body, comment: "" };
+        return { id: node.id, title: node.title, body: node.body, comment: "", tags: [] };
       }
-      return { id: String(id), title: `#${id}`, body: "", comment: "" };
+      return { id: String(id), title: `#${id}`, body: "", comment: "", tags: [] };
     }).filter((entry) => entry !== null);
   }
 
@@ -708,13 +709,19 @@
             }
             session = {
               currentNodeId: sessionData.currentNodeId ?? null,
-              history: sessionData.history
+              history: sessionData.history.map((entry) => ({
+                id: entry.id,
+                title: entry.title || "",
+                body: entry.body || "",
+                comment: entry.comment || "",
+                tags: Array.isArray(entry.tags) ? entry.tags : []
+              }))
             };
           } else {
             const firstNode = graph.nodes[0];
             session = {
               currentNodeId: firstNode?.id ?? null,
-              history: firstNode ? [{ id: firstNode.id, title: firstNode.title, body: firstNode.body, comment: "" }] : []
+              history: firstNode ? [{ id: firstNode.id, title: firstNode.title, body: firstNode.body, comment: "", tags: [] }] : []
             };
           }
           if (onSuccess) {
@@ -1014,7 +1021,8 @@
           id: String(toId),
           title: `#${toId} (missing)`,
           body: "Target node does not exist",
-          comment: ""
+          comment: "",
+          tags: []
         });
         this.storage.save(graph.toJSON(), session.toJSON());
         this.url.updateUrl(String(toId));
@@ -1037,7 +1045,11 @@
       const currentIdx = session.history.length - 1;
       if (currentIdx > 0) {
         const prevEntry = session.history[currentIdx - 1];
-        session.currentNodeId = prevEntry ? prevEntry.id : null;
+        if (typeof prevEntry === "object" && prevEntry !== null) {
+          session.currentNodeId = prevEntry.id || null;
+        } else {
+          session.currentNodeId = prevEntry;
+        }
         this.storage.save(this.state.getGraph().toJSON(), session.toJSON());
         this.url.updateUrl(session.currentNodeId);
         this.state.setSession(session);
@@ -1687,6 +1699,7 @@
       this.events.on("graph:changed", () => this.render());
       this.events.on("state:updated", () => this.render());
       this.events.on("navigation:advanced", () => this.render());
+      this.events.on("history:tags-updated", () => this.render());
     }
     /**
      * Render the runner view
@@ -1822,7 +1835,7 @@
         } else if (session.currentNodeId && session.history.length > 0) {
           const node2 = byId(session.currentNodeId, graph.nodes);
           if (node2) {
-            const newEntry = { id: node2.id, title: node2.title, body: node2.body, comment: commentTextarea.value };
+            const newEntry = { id: node2.id, title: node2.title, body: node2.body, comment: commentTextarea.value, tags: [] };
             session.history.push(newEntry);
             currentHistoryEntry = newEntry;
             this.events.emit("history:entry-added", newEntry);
@@ -1830,6 +1843,112 @@
         }
       };
       view.appendChild(commentTextarea);
+      const tagsDivider = document.createElement("div");
+      tagsDivider.className = "divider";
+      tagsDivider.style.marginTop = "16px";
+      tagsDivider.style.marginBottom = "12px";
+      view.appendChild(tagsDivider);
+      const tagsLabel = document.createElement("label");
+      tagsLabel.className = "muted";
+      tagsLabel.style.marginBottom = "6px";
+      tagsLabel.textContent = 'Tags / Notes (e.g. "needs clarification", "customer reacted strongly", "requires SME review")';
+      view.appendChild(tagsLabel);
+      const tagsContainer = document.createElement("div");
+      tagsContainer.className = "col";
+      tagsContainer.style.gap = "8px";
+      tagsContainer.style.marginBottom = "8px";
+      const tagsDisplay = document.createElement("div");
+      tagsDisplay.className = "row";
+      tagsDisplay.style.flexWrap = "wrap";
+      tagsDisplay.style.gap = "6px";
+      tagsDisplay.style.minHeight = "32px";
+      const updateTagsDisplay = () => {
+        tagsDisplay.innerHTML = "";
+        const tags = currentHistoryEntry?.tags || [];
+        tags.forEach((tag, idx) => {
+          const tagPill = document.createElement("span");
+          tagPill.className = "badge";
+          tagPill.style.cursor = "pointer";
+          tagPill.textContent = tag;
+          tagPill.title = "Click to remove";
+          tagPill.onclick = () => {
+            if (currentHistoryEntry) {
+              currentHistoryEntry.tags = currentHistoryEntry.tags.filter((_, i) => i !== idx);
+              if (!Array.isArray(currentHistoryEntry.tags))
+                currentHistoryEntry.tags = [];
+              updateTagsDisplay();
+              this.events.emit("history:tags-updated", currentHistoryEntry);
+            }
+          };
+          tagsDisplay.appendChild(tagPill);
+        });
+      };
+      updateTagsDisplay();
+      tagsContainer.appendChild(tagsDisplay);
+      const tagInputRow = document.createElement("div");
+      tagInputRow.className = "row";
+      tagInputRow.style.gap = "8px";
+      tagInputRow.style.alignItems = "center";
+      const tagInput = document.createElement("input");
+      tagInput.type = "text";
+      tagInput.placeholder = "Enter tag and press Enter or click Add";
+      tagInput.style.flex = "1";
+      tagInput.onkeydown = (e) => {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          const tagValue = tagInput.value.trim();
+          if (tagValue) {
+            if (!currentHistoryEntry) {
+              const node2 = byId(session.currentNodeId, graph.nodes);
+              if (node2) {
+                const newEntry = { id: node2.id, title: node2.title, body: node2.body, comment: "", tags: [tagValue] };
+                session.history.push(newEntry);
+                currentHistoryEntry = newEntry;
+                this.events.emit("history:entry-added", newEntry);
+              }
+            } else {
+              if (!Array.isArray(currentHistoryEntry.tags))
+                currentHistoryEntry.tags = [];
+              if (!currentHistoryEntry.tags.includes(tagValue)) {
+                currentHistoryEntry.tags.push(tagValue);
+                this.events.emit("history:tags-updated", currentHistoryEntry);
+              }
+            }
+            tagInput.value = "";
+            updateTagsDisplay();
+          }
+        }
+      };
+      const tagAddBtn = document.createElement("button");
+      tagAddBtn.textContent = "Add";
+      tagAddBtn.className = "ghost";
+      tagAddBtn.onclick = () => {
+        const tagValue = tagInput.value.trim();
+        if (tagValue) {
+          if (!currentHistoryEntry) {
+            const node2 = byId(session.currentNodeId, graph.nodes);
+            if (node2) {
+              const newEntry = { id: node2.id, title: node2.title, body: node2.body, comment: "", tags: [tagValue] };
+              session.history.push(newEntry);
+              currentHistoryEntry = newEntry;
+              this.events.emit("history:entry-added", newEntry);
+            }
+          } else {
+            if (!Array.isArray(currentHistoryEntry.tags))
+              currentHistoryEntry.tags = [];
+            if (!currentHistoryEntry.tags.includes(tagValue)) {
+              currentHistoryEntry.tags.push(tagValue);
+              this.events.emit("history:tags-updated", currentHistoryEntry);
+            }
+          }
+          tagInput.value = "";
+          updateTagsDisplay();
+        }
+      };
+      tagInputRow.appendChild(tagInput);
+      tagInputRow.appendChild(tagAddBtn);
+      tagsContainer.appendChild(tagInputRow);
+      view.appendChild(tagsContainer);
       const decisionDivider = document.createElement("div");
       decisionDivider.className = "divider";
       decisionDivider.style.marginTop = "16px";
@@ -1896,6 +2015,7 @@
       this.events.on("history:render-requested", () => this.render());
       this.events.on("history:comment-updated", () => this.render());
       this.events.on("history:entry-added", () => this.render());
+      this.events.on("history:tags-updated", () => this.render());
     }
     /**
      * Render the history view
@@ -1914,6 +2034,7 @@
         const entryTitle = typeof entry === "object" && entry !== null ? entry.title || "" : "";
         const entryBody = typeof entry === "object" && entry !== null ? entry.body || "" : "";
         const entryComment = typeof entry === "object" && entry !== null ? entry.comment || "" : "";
+        const entryTags = typeof entry === "object" && entry !== null ? Array.isArray(entry.tags) ? entry.tags : [] : [];
         const historyItem = document.createElement("div");
         historyItem.className = "history-item";
         if (String(entryId) === String(session.currentNodeId)) {
@@ -1939,6 +2060,21 @@
           comment.className = "history-comment";
           comment.textContent = entryComment;
           content.appendChild(comment);
+        }
+        if (entryTags && entryTags.length > 0) {
+          const tagsContainer = document.createElement("div");
+          tagsContainer.className = "row";
+          tagsContainer.style.flexWrap = "wrap";
+          tagsContainer.style.gap = "4px";
+          tagsContainer.style.marginTop = "6px";
+          entryTags.forEach((tag) => {
+            const tagPill = document.createElement("span");
+            tagPill.className = "badge";
+            tagPill.style.fontSize = "0.85em";
+            tagPill.textContent = tag;
+            tagsContainer.appendChild(tagPill);
+          });
+          content.appendChild(tagsContainer);
         }
         const deleteBtn = document.createElement("button");
         deleteBtn.className = "history-delete-btn";
@@ -2289,6 +2425,10 @@
         this.historyView.render();
       });
       this.eventBus.on("history:entry-added", (entry) => {
+        this.storage.save(this.state.getGraph().toJSON(), this.state.getSession().toJSON());
+        this.historyView.render();
+      });
+      this.eventBus.on("history:tags-updated", (entry) => {
         this.storage.save(this.state.getGraph().toJSON(), this.state.getSession().toJSON());
         this.historyView.render();
       });

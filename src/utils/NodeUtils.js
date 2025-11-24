@@ -134,7 +134,7 @@ export function isReferenced(nodeId, nodes) {
  */
 export function createHistoryEntry(node) {
   if (!node) return null;
-  return { id: node.id, title: node.title, body: node.body, comment: '' };
+  return { id: node.id, title: node.title, body: node.body, comment: '', tags: [] };
 }
 
 /**
@@ -154,9 +154,9 @@ export function migrateHistory(oldHistory, graphData) {
   return oldHistory.map(id => {
     const node = findNodeById(id);
     if (node) {
-      return { id: node.id, title: node.title, body: node.body, comment: '' };
+      return { id: node.id, title: node.title, body: node.body, comment: '', tags: [] };
     }
     // If node doesn't exist, try to keep just the ID as fallback
-    return { id: String(id), title: `#${id}`, body: '', comment: '' };
+    return { id: String(id), title: `#${id}`, body: '', comment: '', tags: [] };
   }).filter(entry => entry !== null);
 }
