@@ -25,6 +25,7 @@ export class DOMRegistry {
       btnImport: document.getElementById('btnImport'),
       btnExport: document.getElementById('btnExport'),
       btnExportSession: document.getElementById('btnExportSession'),
+      btnEmailSummary: document.getElementById('btnEmailSummary'),
       btnNewNode: document.getElementById('btnNewNode'),
       btnNewSession: document.getElementById('btnNewSession'),
       btnViewList: document.getElementById('btnViewList'),
@@ -49,7 +50,12 @@ export class DOMRegistry {
       knowledgeGapsContainer: document.getElementById('knowledgeGapsContainer'),
       btnNavMain: document.getElementById('btnNavMain'),
       btnNavNodes: document.getElementById('btnNavNodes'),
-      btnNavGaps: document.getElementById('btnNavGaps')
+      btnNavGaps: document.getElementById('btnNavGaps'),
+      emailSummaryModal: document.getElementById('emailSummaryModal'),
+      emailSummaryFormat: document.getElementById('emailSummaryFormat'),
+      emailSummaryText: document.getElementById('emailSummaryText'),
+      btnCopyEmailSummary: document.getElementById('btnCopyEmailSummary'),
+      btnCloseEmailSummary: document.getElementById('btnCloseEmailSummary')
     };
   }
 

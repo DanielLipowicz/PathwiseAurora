@@ -21,6 +21,7 @@
       <button id="btnImport">Import JSON</button>
       <button id="btnExport" class="primary">Export JSON</button>
       <button id="btnExportSession">Save Session Flow</button>
+      <button id="btnEmailSummary">Email Summary</button>
       <button id="btnNewNode">New Node</button>
       <button id="btnNewSession" class="danger">New Session</button>
     </div>
@@ -82,6 +83,27 @@
 
   <!-- Knowledge Gaps Page View -->
   <main class="knowledge-gaps-container hidden" id="knowledgeGapsContainer"></main>
+
+  <!-- Email Summary Modal -->
+  <div id="emailSummaryModal" class="modal hidden">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>Email Summary</h2>
+        <button id="btnCloseEmailSummary" class="modal-close">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="row" style="margin-bottom: 12px; gap: 8px; align-items: center;">
+          <label for="emailSummaryFormat" style="margin: 0;">Format:</label>
+          <select id="emailSummaryFormat" style="flex: 1;">
+            <option value="text">Plain Text</option>
+            <option value="html">HTML</option>
+          </select>
+          <button id="btnCopyEmailSummary" class="primary">Copy</button>
+        </div>
+        <textarea id="emailSummaryText" style="width: 100%; min-height: 400px; font-family: monospace; font-size: 12px; resize: vertical;"></textarea>
+      </div>
+    </div>
+  </div>
 
   <!-- Errors section at the bottom of main page -->
   <div id="errorsSection" class="errors-section hidden">

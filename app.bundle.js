@@ -81,6 +81,7 @@
         btnImport: document.getElementById("btnImport"),
         btnExport: document.getElementById("btnExport"),
         btnExportSession: document.getElementById("btnExportSession"),
+        btnEmailSummary: document.getElementById("btnEmailSummary"),
         btnNewNode: document.getElementById("btnNewNode"),
         btnNewSession: document.getElementById("btnNewSession"),
         btnViewList: document.getElementById("btnViewList"),
@@ -105,7 +106,12 @@
         knowledgeGapsContainer: document.getElementById("knowledgeGapsContainer"),
         btnNavMain: document.getElementById("btnNavMain"),
         btnNavNodes: document.getElementById("btnNavNodes"),
-        btnNavGaps: document.getElementById("btnNavGaps")
+        btnNavGaps: document.getElementById("btnNavGaps"),
+        emailSummaryModal: document.getElementById("emailSummaryModal"),
+        emailSummaryFormat: document.getElementById("emailSummaryFormat"),
+        emailSummaryText: document.getElementById("emailSummaryText"),
+        btnCopyEmailSummary: document.getElementById("btnCopyEmailSummary"),
+        btnCloseEmailSummary: document.getElementById("btnCloseEmailSummary")
       };
     }
     /**
@@ -606,6 +612,151 @@
     }).filter((entry) => entry !== null);
   }
 
+  // src/utils/EmailSummaryGenerator.js
+  function generateEmailSummary(data, format = "text") {
+    if (!data || data.exportType !== "session") {
+      throw new Error('Invalid data: exportType must be "session"');
+    }
+    const { graph, session, exportDate } = data;
+    if (!graph || !session || !session.history || session.history.length === 0) {
+      throw new Error("Invalid data: missing graph, session, or history");
+    }
+    const history2 = session.history;
+    const startNode = history2[0];
+    const endNodeId = session.currentNodeId;
+    let endNodeTitle = "";
+    const endNodeInHistory = history2.find((h) => String(h.id) === String(endNodeId));
+    if (endNodeInHistory) {
+      endNodeTitle = endNodeInHistory.title || "";
+    } else if (graph.nodes) {
+      const endNodeFromGraph = graph.nodes.find((n) => String(n.id) === String(endNodeId));
+      if (endNodeFromGraph) {
+        endNodeTitle = endNodeFromGraph.title || "";
+      }
+    }
+    if (format === "html") {
+      return generateHtmlSummary(graph, session, exportDate, startNode, endNodeId, endNodeTitle, history2);
+    } else {
+      return generateTextSummary(graph, session, exportDate, startNode, endNodeId, endNodeTitle, history2);
+    }
+  }
+  function generateTextSummary(graph, session, exportDate, startNode, endNodeId, endNodeTitle, history2) {
+    const lines = [];
+    const graphTitle = graph.title || "Untitled Session";
+    lines.push(`Subject: Summary \u2013 ${graphTitle}`);
+    lines.push("");
+    lines.push("");
+    lines.push("Incident / flow title:");
+    lines.push(graphTitle);
+    lines.push("");
+    lines.push(`Export date (UTC):`);
+    lines.push(exportDate || (/* @__PURE__ */ new Date()).toISOString());
+    lines.push("");
+    lines.push("Session start:");
+    lines.push(`Node #${startNode.id} \u2013 ${startNode.title || ""}`);
+    lines.push("");
+    lines.push("Session end:");
+    lines.push(`Node #${endNodeId} \u2013 ${endNodeTitle}`);
+    lines.push("");
+    lines.push("");
+    lines.push("===== Session Steps =====");
+    lines.push("");
+    history2.forEach((entry, index) => {
+      const stepNum = index + 1;
+      lines.push(`Step ${stepNum}`);
+      lines.push(`Node: #${entry.id} \u2013 ${entry.title || ""}`);
+      lines.push("What happened:");
+      if (entry.body && entry.body.trim()) {
+        lines.push(`  ${entry.body.trim()}`);
+      } else {
+        lines.push("  (No description)");
+      }
+      lines.push("");
+      if (entry.comment && entry.comment.trim()) {
+        lines.push("Comment:");
+        lines.push(`  ${entry.comment.trim()}`);
+        lines.push("");
+      }
+      if (entry.tags && Array.isArray(entry.tags) && entry.tags.length > 0) {
+        const tagsStr = entry.tags.filter((t) => t && t.trim()).join(", ");
+        if (tagsStr) {
+          lines.push("Tags:");
+          lines.push(`  ${tagsStr}`);
+          lines.push("");
+        }
+      }
+    });
+    lines.push("");
+    lines.push("===== Session Summary =====");
+    lines.push("");
+    lines.push(`The session started at node #${startNode.id} \u2013 "${startNode.title || ""}"`);
+    lines.push(`and concluded at node #${endNodeId} \u2013 "${endNodeTitle}".`);
+    lines.push("");
+    lines.push("");
+    lines.push("Next recommended actions:");
+    lines.push("- ...");
+    lines.push("- ...");
+    return lines.join("\n");
+  }
+  function generateHtmlSummary(graph, session, exportDate, startNode, endNodeId, endNodeTitle, history2) {
+    const parts = [];
+    const graphTitle = graph.title || "Untitled Session";
+    const exportDateStr = exportDate || (/* @__PURE__ */ new Date()).toISOString();
+    parts.push(`<h1>Summary \u2013 ${escapeHtml(graphTitle)}</h1>`);
+    parts.push("");
+    parts.push(`<p><strong>Export date (UTC):</strong> ${escapeHtml(exportDateStr)}</p>`);
+    parts.push(`<p><strong>Session start:</strong> #${escapeHtml(String(startNode.id))} \u2013 ${escapeHtml(startNode.title || "")}</p>`);
+    parts.push(`<p><strong>Session end:</strong> #${escapeHtml(String(endNodeId))} \u2013 ${escapeHtml(endNodeTitle)}</p>`);
+    parts.push("");
+    parts.push("<hr />");
+    parts.push("");
+    parts.push("<h2>Session Steps</h2>");
+    parts.push("<ol>");
+    history2.forEach((entry, index) => {
+      const stepNum = index + 1;
+      parts.push("  <li>");
+      parts.push(`    <h3>Step ${stepNum} \u2013 #${escapeHtml(String(entry.id))} \u2013 ${escapeHtml(entry.title || "")}</h3>`);
+      if (entry.body && entry.body.trim()) {
+        parts.push(`    <p><strong>What happened:</strong><br />`);
+        parts.push(`    ${escapeHtml(entry.body.trim()).replace(/\n/g, "<br />")}</p>`);
+      } else {
+        parts.push(`    <p><strong>What happened:</strong><br />`);
+        parts.push(`    (No description)</p>`);
+      }
+      if (entry.comment && entry.comment.trim()) {
+        parts.push(`    <p><strong>Comment:</strong> ${escapeHtml(entry.comment.trim())}</p>`);
+      }
+      if (entry.tags && Array.isArray(entry.tags) && entry.tags.length > 0) {
+        const tagsStr = entry.tags.filter((t) => t && t.trim()).map((t) => escapeHtml(t.trim())).join(", ");
+        if (tagsStr) {
+          parts.push(`    <p><strong>Tags:</strong> ${tagsStr}</p>`);
+        }
+      }
+      parts.push("  </li>");
+    });
+    parts.push("</ol>");
+    parts.push("");
+    parts.push("<hr />");
+    parts.push("");
+    parts.push("<h2>Session Summary</h2>");
+    parts.push("<p>");
+    parts.push(`  The session started at node #${escapeHtml(String(startNode.id))} \u2013 "${escapeHtml(startNode.title || "")}"`);
+    parts.push(`  and concluded at node #${escapeHtml(String(endNodeId))} \u2013 "${escapeHtml(endNodeTitle)}".`);
+    parts.push("</p>");
+    parts.push("");
+    parts.push("<p><strong>Next recommended actions:</strong></p>");
+    parts.push("<ul>");
+    parts.push("  <li>...</li>");
+    parts.push("  <li>...</li>");
+    parts.push("</ul>");
+    return parts.join("\n");
+  }
+  function escapeHtml(s) {
+    if (s == null)
+      return "";
+    return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+  }
+
   // src/services/ImportExportService.js
   var ImportExportService = class {
     constructor(storageService) {
@@ -666,6 +817,97 @@
         exportType: "session"
       };
       this.download(filename, JSON.stringify(sessionData, null, 2));
+    }
+    /**
+     * Show email summary modal
+     * @param {Object} graph - Graph object
+     * @param {Object} session - Session object
+     * @param {Object} domRegistry - DOM registry for accessing modal elements
+     */
+    showEmailSummary(graph, session, domRegistry) {
+      if (!session || !session.history || session.history.length === 0) {
+        alert("No session flow to generate email summary.");
+        return;
+      }
+      const sessionData = {
+        graph,
+        session,
+        exportDate: (/* @__PURE__ */ new Date()).toISOString(),
+        exportType: "session"
+      };
+      const modal = domRegistry.get("emailSummaryModal");
+      const formatSelect = domRegistry.get("emailSummaryFormat");
+      const textarea = domRegistry.get("emailSummaryText");
+      const copyBtn = domRegistry.get("btnCopyEmailSummary");
+      const closeBtn = domRegistry.get("btnCloseEmailSummary");
+      if (!modal || !formatSelect || !textarea || !copyBtn || !closeBtn) {
+        alert("Email summary UI elements not found.");
+        return;
+      }
+      let currentFormat = "text";
+      try {
+        const summary = generateEmailSummary(sessionData, currentFormat);
+        textarea.value = summary;
+      } catch (error) {
+        alert("Error generating email summary: " + error.message);
+        return;
+      }
+      modal.classList.remove("hidden");
+      const updateSummary = () => {
+        currentFormat = formatSelect.value;
+        try {
+          const summary = generateEmailSummary(sessionData, currentFormat);
+          textarea.value = summary;
+        } catch (error) {
+          alert("Error generating email summary: " + error.message);
+        }
+      };
+      formatSelect.onchange = updateSummary;
+      copyBtn.onclick = () => {
+        textarea.select();
+        textarea.setSelectionRange(0, 99999);
+        try {
+          document.execCommand("copy");
+          const originalText = copyBtn.textContent;
+          copyBtn.textContent = "Copied!";
+          copyBtn.style.background = "linear-gradient(180deg,#5bd18a,#3e9f67)";
+          setTimeout(() => {
+            copyBtn.textContent = originalText;
+            copyBtn.style.background = "";
+          }, 2e3);
+        } catch (err) {
+          navigator.clipboard.writeText(textarea.value).then(() => {
+            const originalText = copyBtn.textContent;
+            copyBtn.textContent = "Copied!";
+            copyBtn.style.background = "linear-gradient(180deg,#5bd18a,#3e9f67)";
+            setTimeout(() => {
+              copyBtn.textContent = originalText;
+              copyBtn.style.background = "";
+            }, 2e3);
+          }).catch(() => {
+            alert("Failed to copy. Please select and copy manually.");
+          });
+        }
+      };
+      const closeModal = () => {
+        modal.classList.add("hidden");
+        formatSelect.onchange = null;
+        copyBtn.onclick = null;
+        closeBtn.onclick = null;
+      };
+      closeBtn.onclick = closeModal;
+      modal.onclick = (e) => {
+        if (e.target === modal) {
+          closeModal();
+        }
+      };
+      const escapeHandler = (e) => {
+        if (e.key === "Escape" && !modal.classList.contains("hidden")) {
+          closeModal();
+          document.removeEventListener("keydown", escapeHandler);
+        }
+      };
+      document.addEventListener("keydown", escapeHandler);
     }
     /**
      * Import JSON from file
@@ -1121,7 +1363,7 @@
   };
 
   // src/utils/HtmlUtils.js
-  function escapeHtml(s) {
+  function escapeHtml2(s) {
     return String(s).replace(/[&<>"']/g, (c) => ({
       "&": "&amp;",
       "<": "&lt;",
@@ -1412,63 +1654,63 @@
           return !targetId || !nodeIds.has(targetId);
         });
         html += `
-        <div class="node-card" data-node-id="${escapeHtml(String(node.id))}">
+        <div class="node-card" data-node-id="${escapeHtml2(String(node.id))}">
           <div class="node-card-header">
             <div class="node-id-section">
-              <span class="node-id-badge">#${escapeHtml(String(node.id))}</span>
+              <span class="node-id-badge">#${escapeHtml2(String(node.id))}</span>
               ${isOrphan ? '<span class="badge warn" title="Node not referenced by any other node">Orphan</span>' : ""}
               ${missingTitle ? '<span class="badge danger" title="Missing title">No Title</span>' : ""}
               ${missingDescription ? '<span class="badge danger" title="Missing description">No Description</span>' : ""}
               ${invalidChoices.length > 0 ? `<span class="badge warn" title="Invalid choice targets">${invalidChoices.length} Invalid Choice${invalidChoices.length > 1 ? "s" : ""}</span>` : ""}
             </div>
             <div class="node-card-actions">
-              <button class="btn-node-edit" data-action="edit" data-node-id="${escapeHtml(String(node.id))}" title="Edit">\u270F\uFE0F</button>
-              <button class="btn-node-clone" data-action="clone" data-node-id="${escapeHtml(String(node.id))}" title="Clone">\u{1F4CB}</button>
-              <button class="btn-node-delete" data-action="delete" data-node-id="${escapeHtml(String(node.id))}" title="Delete">\u{1F5D1}\uFE0F</button>
+              <button class="btn-node-edit" data-action="edit" data-node-id="${escapeHtml2(String(node.id))}" title="Edit">\u270F\uFE0F</button>
+              <button class="btn-node-clone" data-action="clone" data-node-id="${escapeHtml2(String(node.id))}" title="Clone">\u{1F4CB}</button>
+              <button class="btn-node-delete" data-action="delete" data-node-id="${escapeHtml2(String(node.id))}" title="Delete">\u{1F5D1}\uFE0F</button>
             </div>
           </div>
           
           <div class="node-card-content">
             <div class="node-field">
               <label>Title</label>
-              <input type="text" class="node-title-input" data-node-id="${escapeHtml(String(node.id))}" 
-                     value="${escapeHtml(node.title || "")}" placeholder="Node title" />
+              <input type="text" class="node-title-input" data-node-id="${escapeHtml2(String(node.id))}" 
+                     value="${escapeHtml2(node.title || "")}" placeholder="Node title" />
             </div>
             
             <div class="node-field">
               <label>Description</label>
-              <textarea class="node-description-input" data-node-id="${escapeHtml(String(node.id))}" 
-                        rows="3" placeholder="Node description">${escapeHtml(node.body || "")}</textarea>
+              <textarea class="node-description-input" data-node-id="${escapeHtml2(String(node.id))}" 
+                        rows="3" placeholder="Node description">${escapeHtml2(node.body || "")}</textarea>
             </div>
             
             <div class="node-field">
               <div class="node-field-header">
                 <label>Choices (${node.choices.length})</label>
                 <div class="node-field-actions">
-                  <button class="btn-add-child" data-node-id="${escapeHtml(String(node.id))}" title="Add Child Node">+ Add Child</button>
-                  <button class="btn-add-choice" data-node-id="${escapeHtml(String(node.id))}">+ Add Choice</button>
+                  <button class="btn-add-child" data-node-id="${escapeHtml2(String(node.id))}" title="Add Child Node">+ Add Child</button>
+                  <button class="btn-add-choice" data-node-id="${escapeHtml2(String(node.id))}">+ Add Choice</button>
                 </div>
               </div>
-              <div class="choices-list" data-node-id="${escapeHtml(String(node.id))}">
+              <div class="choices-list" data-node-id="${escapeHtml2(String(node.id))}">
       `;
         node.choices.forEach((choice, idx) => {
           const isValid = nodeIds.has(String(choice.to || ""));
           html += `
           <div class="choice-item ${!isValid ? "invalid" : ""}" data-choice-index="${idx}">
             <input type="text" class="choice-label-input" 
-                   data-node-id="${escapeHtml(String(node.id))}" 
+                   data-node-id="${escapeHtml2(String(node.id))}" 
                    data-choice-index="${idx}"
-                   value="${escapeHtml(choice.label || "")}" 
+                   value="${escapeHtml2(choice.label || "")}" 
                    placeholder="Choice label" />
             <input type="text" class="choice-target-input" 
-                   data-node-id="${escapeHtml(String(node.id))}" 
+                   data-node-id="${escapeHtml2(String(node.id))}" 
                    data-choice-index="${idx}"
-                   value="${escapeHtml(String(choice.to || ""))}" 
+                   value="${escapeHtml2(String(choice.to || ""))}" 
                    placeholder="Target node ID" 
                    list="nodeIdsList" />
             ${!isValid ? '<span class="choice-error" title="Target node does not exist">\u26A0\uFE0F</span>' : ""}
             <button class="btn-remove-choice" 
-                    data-node-id="${escapeHtml(String(node.id))}" 
+                    data-node-id="${escapeHtml2(String(node.id))}" 
                     data-choice-index="${idx}" 
                     title="Remove choice">\xD7</button>
           </div>
@@ -1486,9 +1728,9 @@
       
       ${incomingRefs.map((ref) => `
                 <div class="incoming-ref-item">
-                  <span class="ref-node-id">#${escapeHtml(String(ref.node.id))}</span>
-                  <span class="ref-choice-label">"${escapeHtml(ref.choice.label || "")}"</span>
-                  <span class="ref-node-title">${escapeHtml(ref.node.title || "")}</span>
+                  <span class="ref-node-id">#${escapeHtml2(String(ref.node.id))}</span>
+                  <span class="ref-choice-label">"${escapeHtml2(ref.choice.label || "")}"</span>
+                  <span class="ref-node-title">${escapeHtml2(ref.node.title || "")}</span>
                 </div>
       `).join("")}
       
@@ -1503,7 +1745,7 @@
       html += `
       </div>
       <datalist id="nodeIdsList">
-        ${graph.nodes.map((n) => `<option value="${escapeHtml(String(n.id))}">${escapeHtml(n.title || "")}</option>`).join("")}
+        ${graph.nodes.map((n) => `<option value="${escapeHtml2(String(n.id))}">${escapeHtml2(n.title || "")}</option>`).join("")}
       </datalist>
     `;
       container.innerHTML = html;
@@ -1718,7 +1960,7 @@
       if (!graph || !session)
         return;
       if (startSelect) {
-        startSelect.innerHTML = graph.nodes.sort((a, b) => compareIds(a.id, b.id)).map((n) => `<option value="${n.id}">#${n.id} \xB7 ${escapeHtml(n.title)}</option>`).join("");
+        startSelect.innerHTML = graph.nodes.sort((a, b) => compareIds(a.id, b.id)).map((n) => `<option value="${n.id}">#${n.id} \xB7 ${escapeHtml2(n.title)}</option>`).join("");
       }
       if (runnerNodeId) {
         runnerNodeId.value = session.currentNodeId ?? "";
@@ -1737,7 +1979,7 @@
           parentLink.className = "muted";
           parentLink.style.marginBottom = "8px";
           parentLink.style.fontSize = "0.9em";
-          parentLink.innerHTML = `\u2191 Parent: <a href="#" style="text-decoration: underline; cursor: pointer;">#${parentId} \xB7 ${escapeHtml(parent.title)}</a>`;
+          parentLink.innerHTML = `\u2191 Parent: <a href="#" style="text-decoration: underline; cursor: pointer;">#${parentId} \xB7 ${escapeHtml2(parent.title)}</a>`;
           parentLink.querySelector("a").onclick = (e) => {
             e.preventDefault();
             this.events.emit("navigation:advance-requested", parentId);
@@ -2475,27 +2717,27 @@
       `;
         for (const issue of analysis.brokenConnections) {
           html += `
-          <div class="gap-item" data-node-id="${escapeHtml(issue.nodeId)}" data-choice-index="${issue.choiceIndex}">
+          <div class="gap-item" data-node-id="${escapeHtml2(issue.nodeId)}" data-choice-index="${issue.choiceIndex}">
             <div class="gap-item-content">
               <div class="gap-item-header">
-                <span class="gap-node-id">Node #${escapeHtml(issue.nodeId)}</span>
+                <span class="gap-node-id">Node #${escapeHtml2(issue.nodeId)}</span>
                 <span class="badge danger">Broken Link</span>
               </div>
               <div class="gap-item-details">
                 <div class="gap-detail">
                   <strong>Choice Label:</strong> 
                   <span class="${!issue.choice.label || !issue.choice.label.trim() ? "text-muted" : ""}">
-                    ${escapeHtml(issue.choice.label || "(empty)")}
+                    ${escapeHtml2(issue.choice.label || "(empty)")}
                   </span>
                 </div>
                 <div class="gap-detail">
                   <strong>Target Node:</strong> 
-                  <span class="text-danger">#${escapeHtml(issue.targetId)} (does not exist)</span>
+                  <span class="text-danger">#${escapeHtml2(issue.targetId)} (does not exist)</span>
                 </div>
-                ${issue.node.title ? `<div class="gap-detail"><strong>Node Title:</strong> ${escapeHtml(issue.node.title)}</div>` : ""}
+                ${issue.node.title ? `<div class="gap-detail"><strong>Node Title:</strong> ${escapeHtml2(issue.node.title)}</div>` : ""}
               </div>
             </div>
-            <button class="btn-goto-node" data-node-id="${escapeHtml(issue.nodeId)}" data-choice-index="${issue.choiceIndex}" title="Jump to node">Go to Node</button>
+            <button class="btn-goto-node" data-node-id="${escapeHtml2(issue.nodeId)}" data-choice-index="${issue.choiceIndex}" title="Jump to node">Go to Node</button>
           </div>
         `;
         }
@@ -2516,15 +2758,15 @@
       `;
         for (const issue of analysis.deadEnds) {
           html += `
-          <div class="gap-item" data-node-id="${escapeHtml(issue.nodeId)}">
+          <div class="gap-item" data-node-id="${escapeHtml2(issue.nodeId)}">
             <div class="gap-item-content">
               <div class="gap-item-header">
-                <span class="gap-node-id">Node #${escapeHtml(issue.nodeId)}</span>
+                <span class="gap-node-id">Node #${escapeHtml2(issue.nodeId)}</span>
                 <span class="badge warn">Dead End</span>
                 ${issue.isRootNode ? '<span class="badge" title="Root level node">Root</span>' : ""}
               </div>
               <div class="gap-item-details">
-                ${issue.node.title ? `<div class="gap-detail"><strong>Title:</strong> ${escapeHtml(issue.node.title)}</div>` : '<div class="gap-detail"><strong>Title:</strong> <span class="text-muted">(empty)</span></div>'}
+                ${issue.node.title ? `<div class="gap-detail"><strong>Title:</strong> ${escapeHtml2(issue.node.title)}</div>` : '<div class="gap-detail"><strong>Title:</strong> <span class="text-muted">(empty)</span></div>'}
                 <div class="gap-detail">
                   <strong>Choices:</strong> 
                   <span class="text-muted">0 (no outgoing connections)</span>
@@ -2535,7 +2777,7 @@
                 </div>
               </div>
             </div>
-            <button class="btn-goto-node" data-node-id="${escapeHtml(issue.nodeId)}" title="Jump to node">Go to Node</button>
+            <button class="btn-goto-node" data-node-id="${escapeHtml2(issue.nodeId)}" title="Jump to node">Go to Node</button>
           </div>
         `;
         }
@@ -2555,20 +2797,20 @@
       `;
         for (const issue of analysis.emptyTitles) {
           html += `
-          <div class="gap-item" data-node-id="${escapeHtml(issue.nodeId)}">
+          <div class="gap-item" data-node-id="${escapeHtml2(issue.nodeId)}">
             <div class="gap-item-content">
               <div class="gap-item-header">
-                <span class="gap-node-id">Node #${escapeHtml(issue.nodeId)}</span>
+                <span class="gap-node-id">Node #${escapeHtml2(issue.nodeId)}</span>
                 <span class="badge warn">Missing Title</span>
               </div>
               <div class="gap-item-details">
                 <div class="gap-detail">
                   <strong>Description:</strong> 
-                  ${issue.node.body && issue.node.body.trim() ? `<span>${escapeHtml(issue.node.body.substring(0, 100))}${issue.node.body.length > 100 ? "..." : ""}</span>` : '<span class="text-muted">(empty)</span>'}
+                  ${issue.node.body && issue.node.body.trim() ? `<span>${escapeHtml2(issue.node.body.substring(0, 100))}${issue.node.body.length > 100 ? "..." : ""}</span>` : '<span class="text-muted">(empty)</span>'}
                 </div>
               </div>
             </div>
-            <button class="btn-goto-node" data-node-id="${escapeHtml(issue.nodeId)}" title="Jump to node">Go to Node</button>
+            <button class="btn-goto-node" data-node-id="${escapeHtml2(issue.nodeId)}" title="Jump to node">Go to Node</button>
           </div>
         `;
         }
@@ -2588,20 +2830,20 @@
       `;
         for (const issue of analysis.emptyDescriptions) {
           html += `
-          <div class="gap-item" data-node-id="${escapeHtml(issue.nodeId)}">
+          <div class="gap-item" data-node-id="${escapeHtml2(issue.nodeId)}">
             <div class="gap-item-content">
               <div class="gap-item-header">
-                <span class="gap-node-id">Node #${escapeHtml(issue.nodeId)}</span>
+                <span class="gap-node-id">Node #${escapeHtml2(issue.nodeId)}</span>
                 <span class="badge warn">Missing Description</span>
               </div>
               <div class="gap-item-details">
                 <div class="gap-detail">
                   <strong>Title:</strong> 
-                  ${issue.node.title && issue.node.title.trim() ? `<span>${escapeHtml(issue.node.title)}</span>` : '<span class="text-muted">(empty)</span>'}
+                  ${issue.node.title && issue.node.title.trim() ? `<span>${escapeHtml2(issue.node.title)}</span>` : '<span class="text-muted">(empty)</span>'}
                 </div>
               </div>
             </div>
-            <button class="btn-goto-node" data-node-id="${escapeHtml(issue.nodeId)}" title="Jump to node">Go to Node</button>
+            <button class="btn-goto-node" data-node-id="${escapeHtml2(issue.nodeId)}" title="Jump to node">Go to Node</button>
           </div>
         `;
         }
@@ -2621,21 +2863,21 @@
       `;
         for (const issue of analysis.emptyChoiceLabels) {
           html += `
-          <div class="gap-item" data-node-id="${escapeHtml(issue.nodeId)}" data-choice-index="${issue.choiceIndex}">
+          <div class="gap-item" data-node-id="${escapeHtml2(issue.nodeId)}" data-choice-index="${issue.choiceIndex}">
             <div class="gap-item-content">
               <div class="gap-item-header">
-                <span class="gap-node-id">Node #${escapeHtml(issue.nodeId)}</span>
+                <span class="gap-node-id">Node #${escapeHtml2(issue.nodeId)}</span>
                 <span class="badge warn">Empty Label</span>
               </div>
               <div class="gap-item-details">
                 <div class="gap-detail">
                   <strong>Choice Target:</strong> 
-                  <span>#${escapeHtml(String(issue.choice.to || ""))}</span>
+                  <span>#${escapeHtml2(String(issue.choice.to || ""))}</span>
                 </div>
-                ${issue.node.title ? `<div class="gap-detail"><strong>Node Title:</strong> ${escapeHtml(issue.node.title)}</div>` : ""}
+                ${issue.node.title ? `<div class="gap-detail"><strong>Node Title:</strong> ${escapeHtml2(issue.node.title)}</div>` : ""}
               </div>
             </div>
-            <button class="btn-goto-node" data-node-id="${escapeHtml(issue.nodeId)}" data-choice-index="${issue.choiceIndex}" title="Jump to node">Go to Node</button>
+            <button class="btn-goto-node" data-node-id="${escapeHtml2(issue.nodeId)}" data-choice-index="${issue.choiceIndex}" title="Jump to node">Go to Node</button>
           </div>
         `;
         }
@@ -2818,6 +3060,19 @@
         els.btnExportSession.onclick = () => {
           this.importExport.exportSession(this.state.getGraph().toJSON(), this.state.getSession().toJSON());
         };
+      }
+      if (els.btnEmailSummary) {
+        els.btnEmailSummary.onclick = () => {
+          const graph = this.state.getGraph();
+          const session = this.state.getSession();
+          if (!graph || !session) {
+            alert("No graph or session available.");
+            return;
+          }
+          this.importExport.showEmailSummary(graph.toJSON(), session.toJSON(), this.dom);
+        };
+      } else {
+        console.warn("btnEmailSummary button not found in DOM");
       }
       if (els.btnNewSession) {
         els.btnNewSession.onclick = () => {

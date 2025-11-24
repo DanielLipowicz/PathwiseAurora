@@ -5,6 +5,7 @@
 
 import { StorageService } from './StorageService.js';
 import { migrateHistory } from '../utils/NodeUtils.js';
+import { generateEmailSummary } from '../utils/EmailSummaryGenerator.js';
 
 export class ImportExportService {
   constructor(storageService) {
@@ -69,6 +70,120 @@ export class ImportExportService {
       exportType: 'session'
     };
     this.download(filename, JSON.stringify(sessionData, null, 2));
+  }
+
+  /**
+   * Show email summary modal
+   * @param {Object} graph - Graph object
+   * @param {Object} session - Session object
+   * @param {Object} domRegistry - DOM registry for accessing modal elements
+   */
+  showEmailSummary(graph, session, domRegistry) {
+    if (!session || !session.history || session.history.length === 0) {
+      alert('No session flow to generate email summary.');
+      return;
+    }
+
+    const sessionData = {
+      graph: graph,
+      session: session,
+      exportDate: new Date().toISOString(),
+      exportType: 'session'
+    };
+
+    const modal = domRegistry.get('emailSummaryModal');
+    const formatSelect = domRegistry.get('emailSummaryFormat');
+    const textarea = domRegistry.get('emailSummaryText');
+    const copyBtn = domRegistry.get('btnCopyEmailSummary');
+    const closeBtn = domRegistry.get('btnCloseEmailSummary');
+
+    if (!modal || !formatSelect || !textarea || !copyBtn || !closeBtn) {
+      alert('Email summary UI elements not found.');
+      return;
+    }
+
+    // Generate initial summary (text format)
+    let currentFormat = 'text';
+    try {
+      const summary = generateEmailSummary(sessionData, currentFormat);
+      textarea.value = summary;
+    } catch (error) {
+      alert('Error generating email summary: ' + error.message);
+      return;
+    }
+
+    // Show modal
+    modal.classList.remove('hidden');
+
+    // Handle format change
+    const updateSummary = () => {
+      currentFormat = formatSelect.value;
+      try {
+        const summary = generateEmailSummary(sessionData, currentFormat);
+        textarea.value = summary;
+      } catch (error) {
+        alert('Error generating email summary: ' + error.message);
+      }
+    };
+
+    formatSelect.onchange = updateSummary;
+
+    // Handle copy button
+    copyBtn.onclick = () => {
+      textarea.select();
+      textarea.setSelectionRange(0, 99999); // For mobile devices
+      try {
+        document.execCommand('copy');
+        // Visual feedback
+        const originalText = copyBtn.textContent;
+        copyBtn.textContent = 'Copied!';
+        copyBtn.style.background = 'linear-gradient(180deg,#5bd18a,#3e9f67)';
+        setTimeout(() => {
+          copyBtn.textContent = originalText;
+          copyBtn.style.background = '';
+        }, 2000);
+      } catch (err) {
+        // Fallback for browsers that don't support execCommand
+        navigator.clipboard.writeText(textarea.value).then(() => {
+          const originalText = copyBtn.textContent;
+          copyBtn.textContent = 'Copied!';
+          copyBtn.style.background = 'linear-gradient(180deg,#5bd18a,#3e9f67)';
+          setTimeout(() => {
+            copyBtn.textContent = originalText;
+            copyBtn.style.background = '';
+          }, 2000);
+        }).catch(() => {
+          alert('Failed to copy. Please select and copy manually.');
+        });
+      }
+    };
+
+    // Handle close button
+    const closeModal = () => {
+      modal.classList.add('hidden');
+      // Clean up event listeners
+      formatSelect.onchange = null;
+      copyBtn.onclick = null;
+      closeBtn.onclick = null;
+    };
+
+    closeBtn.onclick = closeModal;
+
+    // Close on background click
+    modal.onclick = (e) => {
+      if (e.target === modal) {
+        closeModal();
+      }
+    };
+
+    // Close on Escape key
+    const escapeHandler = (e) => {
+      if (e.key === 'Escape' && !modal.classList.contains('hidden')) {
+        closeModal();
+        document.removeEventListener('keydown', escapeHandler);
+      }
+    };
+    document.addEventListener('keydown', escapeHandler);
   }
 
   /**

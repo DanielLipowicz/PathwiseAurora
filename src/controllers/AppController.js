@@ -219,6 +219,20 @@ export class AppController {
       };
     }
 
+    if (els.btnEmailSummary) {
+      els.btnEmailSummary.onclick = () => {
+        const graph = this.state.getGraph();
+        const session = this.state.getSession();
+        if (!graph || !session) {
+          alert('No graph or session available.');
+          return;
+        }
+        this.importExport.showEmailSummary(graph.toJSON(), session.toJSON(), this.dom);
+      };
+    } else {
+      console.warn('btnEmailSummary button not found in DOM');
+    }
+
     // New session button
     if (els.btnNewSession) {
       els.btnNewSession.onclick = () => {

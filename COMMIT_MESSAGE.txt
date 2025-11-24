@@ -1,0 +1,33 @@
+feat: add email summary generator for session exports
+
+Add functionality to generate email summaries from session exports in both
+plain text and HTML formats. Users can now create ready-to-use email content
+from their session history without manual transcription.
+
+Features:
+- Generate email summaries in plain text or HTML format
+- Modal dialog with format selector and copy functionality
+- Editable textarea for manual adjustments before copying
+- Handles empty comments, tags, and duplicate node IDs gracefully
+- Includes session metadata (title, dates, start/end nodes)
+- Step-by-step history with comments and tags
+
+Implementation details:
+- New EmailSummaryGenerator utility (src/utils/EmailSummaryGenerator.js)
+- Extended ImportExportService with showEmailSummary() method
+- Added "Email Summary" button in header
+- Modal UI with dark theme styling
+- Full integration with existing session export flow
+
+Files changed:
+- Added: src/utils/EmailSummaryGenerator.js
+- Modified: src/services/ImportExportService.js
+- Modified: src/controllers/AppController.js
+- Modified: src/ui/DOMRegistry.js
+- Modified: index.html (modal UI)
+- Modified: styles.css (modal styles)
+- Updated: app.bundle.js
+
+This addresses the user story requirement for generating email summaries
+from session exports to share with clients, managers, or tickets.
+
