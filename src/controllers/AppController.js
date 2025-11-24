@@ -23,6 +23,7 @@ import { HistoryView } from '../views/HistoryView.js';
 import { TilesView } from '../views/TilesView.js';
 import { ErrorsView } from '../views/ErrorsView.js';
 import { KnowledgeGapsView } from '../views/KnowledgeGapsView.js';
+import { HelpView } from '../views/HelpView.js';
 import { migrateHistory, byId, createHistoryEntry, getPrevSibling, getNextSibling } from '../utils/NodeUtils.js';
 import { compareIds } from '../utils/IdUtils.js';
 
@@ -55,6 +56,7 @@ export class AppController {
     this.tilesView = new TilesView(this.state, this.eventBus, this.dom);
     this.errorsView = new ErrorsView(this.validation, this.eventBus, this.dom);
     this.knowledgeGapsView = new KnowledgeGapsView(this.state, this.eventBus, this.dom);
+    this.helpView = new HelpView(this.state, this.eventBus, this.dom);
 
     // Set view manager reference for tiles view
     this.tilesView.setViewManager(this.viewManager);
@@ -324,6 +326,12 @@ export class AppController {
       };
     }
 
+    if (els.btnNavHelp) {
+      els.btnNavHelp.onclick = () => {
+        this.switchToPage('help');
+      };
+    }
+
     // Handle gaps page navigation to nodes
     this.eventBus.on('gaps:goto-node', ({ nodeId, choiceIndex }) => {
       // Switch to nodes page
@@ -358,26 +366,30 @@ export class AppController {
   }
 
   /**
-   * Switch between main view, nodes page, and gaps page
-   * @param {string} page - Page name ('main', 'nodes', or 'gaps')
+   * Switch between main view, nodes page, gaps page, and help page
+   * @param {string} page - Page name ('main', 'nodes', 'gaps', or 'help')
    */
   switchToPage(page) {
     const mainView = this.dom.get('mainView');
     const nodesPageContainer = this.dom.get('nodesPageContainer');
     const knowledgeGapsContainer = this.dom.get('knowledgeGapsContainer');
+    const helpContainer = this.dom.get('helpContainer');
     const btnNavMain = this.dom.get('btnNavMain');
     const btnNavNodes = this.dom.get('btnNavNodes');
     const btnNavGaps = this.dom.get('btnNavGaps');
+    const btnNavHelp = this.dom.get('btnNavHelp');
 
     // Hide all pages first
     if (mainView) mainView.classList.add('hidden');
     if (nodesPageContainer) nodesPageContainer.classList.add('hidden');
     if (knowledgeGapsContainer) knowledgeGapsContainer.classList.add('hidden');
+    if (helpContainer) helpContainer.classList.add('hidden');
     
     // Remove active state from all nav buttons
     if (btnNavMain) btnNavMain.classList.remove('active');
     if (btnNavNodes) btnNavNodes.classList.remove('active');
     if (btnNavGaps) btnNavGaps.classList.remove('active');
+    if (btnNavHelp) btnNavHelp.classList.remove('active');
 
     if (page === 'nodes') {
       this.currentPage = 'nodes';
@@ -391,6 +403,12 @@ export class AppController {
       if (btnNavGaps) btnNavGaps.classList.add('active');
       // Render gaps page
       this.knowledgeGapsView.render();
+    } else if (page === 'help') {
+      this.currentPage = 'help';
+      if (helpContainer) helpContainer.classList.remove('hidden');
+      if (btnNavHelp) btnNavHelp.classList.add('active');
+      // Render help page
+      this.helpView.render();
     } else {
       this.currentPage = 'main';
       if (mainView) mainView.classList.remove('hidden');
@@ -521,6 +539,9 @@ export class AppController {
     
     // Initialize gaps page (but keep it hidden until user navigates)
     this.knowledgeGapsView.render();
+    
+    // Initialize help page (but keep it hidden until user navigates)
+    this.helpView.render();
   }
 }
 
