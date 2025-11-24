@@ -13,6 +13,9 @@
       <span class="badge" id="validationBadge">Validation: OK</span>
     </div>
     <div class="right">
+      <button id="btnNavMain" class="nav-button active" title="Main View">Main</button>
+      <button id="btnNavNodes" class="nav-button" title="Nodes Management">Nodes</button>
+      <div class="divider-vertical"></div>
       <input type="file" id="importFile" accept="application/json" class="hidden" />
       <button id="btnImport">Import JSON</button>
       <button id="btnExport" class="primary">Export JSON</button>
@@ -22,7 +25,8 @@
     </div>
   </header>
 
-  <main class="container">
+  <!-- Main View -->
+  <main class="container" id="mainView">
     <!-- Left panel: list + node editor -->
     <section class="card">
       <div class="row" style="margin-bottom:8px">
@@ -72,6 +76,18 @@
     </section>
   </main>
 
+  <!-- Nodes Page View -->
+  <main class="nodes-page-container hidden" id="nodesPageContainer"></main>
+
+  <!-- Errors section at the bottom of main page -->
+  <div id="errorsSection" class="errors-section hidden">
+    <div class="errors-header">
+      <h3>Errors</h3>
+      <button id="btnCloseErrors" class="errors-close">×</button>
+    </div>
+    <div id="errorsList" class="errors-list"></div>
+  </div>
+
   <template id="nodeItemTpl">
     <div class="node-item">
       <div style="min-width:42px; text-align:right" class="muted">#<span class="nid">0</span></div>
@@ -103,13 +119,8 @@
     </div>
   </template>
 
-  <!-- Scripts in correct order -->
-  <script src="data.js"></script>
-  <script src="validation.js"></script>
-  <script src="render.js"></script>
-  <script src="runner.js"></script>
-  <script src="io.js"></script>
-  <script src="app.js"></script>
+  <!-- Main application entry point (bundled for static use) -->
+  <script src="app.bundle.js"></script>
 </body>
 </html>
 

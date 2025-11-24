@@ -1,0 +1,16 @@
+{
+  "name": "pathwise-aurora",
+  "version": "1.0.0",
+  "description": "Pathwise Aurora - Decision Tree Application",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js",
+    "build": "node build.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "esbuild": "^0.19.12"
+  }
+}
