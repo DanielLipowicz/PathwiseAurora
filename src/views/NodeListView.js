@@ -12,6 +12,7 @@ export class NodeListView {
     this.state = stateManager;
     this.events = eventBus;
     this.dom = domRegistry;
+    this.pendingFocusNodeId = null;
     this.setupEventListeners();
   }
 
@@ -27,7 +28,19 @@ export class NodeListView {
     this.events.on('choice:removed', () => this.render());
     // Re-render when nodes are created, deleted, cloned, or children added (structural changes)
     this.events.on('node:created', () => this.render());
-    this.events.on('node:child-created', () => this.render());
+    // Listen for child creation to focus on new node
+    this.events.on('node:child-created', ({ childId }) => {
+      // Store the node ID to focus on after navigation completes
+      // Navigation will trigger session:changed, which will render
+      // Then we focus on the new node after a delay to ensure everything is ready
+      this.pendingFocusNodeId = childId;
+      setTimeout(() => {
+        // Trigger a render if needed, focus will happen in render
+        if (this.pendingFocusNodeId === childId) {
+          this.render();
+        }
+      }, 200);
+    });
     // Note: node:delete-requested, node:clone-requested, node:add-child-requested
     // are handled by NodeController which emits graph:changed, so we don't need separate listeners
   }
@@ -43,6 +56,10 @@ export class NodeListView {
     const filter = this.dom.get('filter');
 
     if (!nodeList || !nodeItemTpl || !choiceRowTpl) return;
+
+    // Store pending focus node ID before render
+    const nodeIdToFocus = this.pendingFocusNodeId;
+    this.pendingFocusNodeId = null;
 
     // Preserve scroll position and active element to prevent scroll-to-top and focus loss
     const scrollTop = nodeList.scrollTop;
@@ -249,6 +266,45 @@ export class NodeListView {
           }
         }
       }, 0);
+    }
+
+    // Focus on pending node after render completes
+    if (nodeIdToFocus) {
+      setTimeout(() => {
+        this.focusOnNode(nodeIdToFocus);
+        // Clear the pending focus after focusing (or attempting to)
+        this.pendingFocusNodeId = null;
+      }, 200);
+    }
+  }
+
+  /**
+   * Focus on a specific node by ID
+   * Scrolls to the node item and focuses on the title input
+   * @param {string|number} nodeId - Node ID to focus on
+   */
+  focusOnNode(nodeId) {
+    const nodeList = this.dom.get('nodeList');
+    if (!nodeList) return;
+
+    const nodeItems = nodeList.querySelectorAll('.node-item');
+    for (const item of nodeItems) {
+      const nidEl = item.querySelector('.nid');
+      if (nidEl && nidEl.textContent === String(nodeId)) {
+        // Scroll the node item into view
+        item.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        
+        // Focus on the title input after a small delay to ensure smooth scroll completes
+        setTimeout(() => {
+          const titleInput = item.querySelector('.ntitle');
+          if (titleInput) {
+            titleInput.focus();
+            // Select all text so user can immediately type to replace
+            titleInput.select();
+          }
+        }, 300);
+        return;
+      }
     }
   }
 }

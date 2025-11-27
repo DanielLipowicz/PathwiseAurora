@@ -1381,6 +1381,7 @@
       this.state = stateManager;
       this.events = eventBus;
       this.dom = domRegistry;
+      this.pendingFocusNodeId = null;
       this.setupEventListeners();
     }
     setupEventListeners() {
@@ -1389,7 +1390,14 @@
       this.events.on("choice:added", () => this.render());
       this.events.on("choice:removed", () => this.render());
       this.events.on("node:created", () => this.render());
-      this.events.on("node:child-created", () => this.render());
+      this.events.on("node:child-created", ({ childId }) => {
+        this.pendingFocusNodeId = childId;
+        setTimeout(() => {
+          if (this.pendingFocusNodeId === childId) {
+            this.render();
+          }
+        }, 200);
+      });
     }
     /**
      * Render the node list
@@ -1402,6 +1410,8 @@
       const filter = this.dom.get("filter");
       if (!nodeList || !nodeItemTpl || !choiceRowTpl)
         return;
+      const nodeIdToFocus = this.pendingFocusNodeId;
+      this.pendingFocusNodeId = null;
       const scrollTop = nodeList.scrollTop;
       const activeElement = document.activeElement;
       let activeElementState = null;
@@ -1569,6 +1579,37 @@
             }
           }
         }, 0);
+      }
+      if (nodeIdToFocus) {
+        setTimeout(() => {
+          this.focusOnNode(nodeIdToFocus);
+          this.pendingFocusNodeId = null;
+        }, 200);
+      }
+    }
+    /**
+     * Focus on a specific node by ID
+     * Scrolls to the node item and focuses on the title input
+     * @param {string|number} nodeId - Node ID to focus on
+     */
+    focusOnNode(nodeId) {
+      const nodeList = this.dom.get("nodeList");
+      if (!nodeList)
+        return;
+      const nodeItems = nodeList.querySelectorAll(".node-item");
+      for (const item of nodeItems) {
+        const nidEl = item.querySelector(".nid");
+        if (nidEl && nidEl.textContent === String(nodeId)) {
+          item.scrollIntoView({ behavior: "smooth", block: "center" });
+          setTimeout(() => {
+            const titleInput = item.querySelector(".ntitle");
+            if (titleInput) {
+              titleInput.focus();
+              titleInput.select();
+            }
+          }, 300);
+          return;
+        }
       }
     }
   };
@@ -1946,6 +1987,9 @@
       this.events.on("state:updated", () => this.render());
       this.events.on("navigation:advanced", () => this.render());
       this.events.on("history:tags-updated", () => this.render());
+      this.events.on("node:child-created", ({ childId }) => {
+        this.events.emit("navigation:advance-requested", childId);
+      });
     }
     /**
      * Render the runner view
@@ -2049,6 +2093,15 @@
         }
       }
       view.appendChild(area);
+      const addChildButton = document.createElement("button");
+      addChildButton.textContent = "+ Add Child Node";
+      addChildButton.className = "primary";
+      addChildButton.style.width = "100%";
+      addChildButton.style.marginTop = "12px";
+      addChildButton.onclick = () => {
+        this.events.emit("node:add-child-requested", node);
+      };
+      view.appendChild(addChildButton);
       const commentDivider = document.createElement("div");
       commentDivider.className = "divider";
       commentDivider.style.marginTop = "16px";

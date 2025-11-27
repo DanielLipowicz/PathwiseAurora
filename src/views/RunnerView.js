@@ -21,6 +21,11 @@ export class RunnerView {
     this.events.on('state:updated', () => this.render());
     this.events.on('navigation:advanced', () => this.render());
     this.events.on('history:tags-updated', () => this.render());
+    // Listen for child node creation during run to navigate to it
+    this.events.on('node:child-created', ({ childId }) => {
+      // Navigate to the newly created child node
+      this.events.emit('navigation:advance-requested', childId);
+    });
   }
 
   /**
@@ -147,6 +152,17 @@ export class RunnerView {
       }
     }
     view.appendChild(area);
+
+    // Add child node button - visible right after choices for easy access
+    const addChildButton = document.createElement('button');
+    addChildButton.textContent = '+ Add Child Node';
+    addChildButton.className = 'primary';
+    addChildButton.style.width = '100%';
+    addChildButton.style.marginTop = '12px';
+    addChildButton.onclick = () => {
+      this.events.emit('node:add-child-requested', node);
+    };
+    view.appendChild(addChildButton);
 
     // Comment section
     const commentDivider = document.createElement('div');
