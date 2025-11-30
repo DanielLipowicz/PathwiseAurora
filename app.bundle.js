@@ -82,6 +82,7 @@
         btnExport: document.getElementById("btnExport"),
         btnExportSession: document.getElementById("btnExportSession"),
         btnEmailSummary: document.getElementById("btnEmailSummary"),
+        btnExportConfluence: document.getElementById("btnExportConfluence"),
         btnNewNode: document.getElementById("btnNewNode"),
         btnNewSession: document.getElementById("btnNewSession"),
         btnViewList: document.getElementById("btnViewList"),
@@ -113,7 +114,11 @@
         emailSummaryFormat: document.getElementById("emailSummaryFormat"),
         emailSummaryText: document.getElementById("emailSummaryText"),
         btnCopyEmailSummary: document.getElementById("btnCopyEmailSummary"),
-        btnCloseEmailSummary: document.getElementById("btnCloseEmailSummary")
+        btnCloseEmailSummary: document.getElementById("btnCloseEmailSummary"),
+        confluenceExportModal: document.getElementById("confluenceExportModal"),
+        confluenceExportText: document.getElementById("confluenceExportText"),
+        btnCopyConfluenceExport: document.getElementById("btnCopyConfluenceExport"),
+        btnCloseConfluenceExport: document.getElementById("btnCloseConfluenceExport")
       };
     }
     /**
@@ -759,6 +764,76 @@
     return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
   }
 
+  // src/utils/ConfluenceExportGenerator.js
+  function generateConfluenceExport(graph) {
+    if (!graph || !graph.nodes || !Array.isArray(graph.nodes)) {
+      throw new Error("Invalid graph data: missing nodes");
+    }
+    const lines = [];
+    const title = graph.title || "Untitled Process";
+    lines.push(`h1. ${escapeConfluenceTitle(title)}`);
+    lines.push("");
+    lines.push(`Generated: ${(/* @__PURE__ */ new Date()).toISOString().split("T")[0]}`);
+    lines.push("");
+    lines.push("");
+    const sortedNodes = [...graph.nodes].sort((a, b) => {
+      const idA = String(a.id);
+      const idB = String(b.id);
+      const numA = parseFloat(idA);
+      const numB = parseFloat(idB);
+      if (!isNaN(numA) && !isNaN(numB)) {
+        return numA - numB;
+      }
+      return idA.localeCompare(idB, void 0, { numeric: true, sensitivity: "base" });
+    });
+    sortedNodes.forEach((node) => {
+      const nodeId = String(node.id);
+      const nodeTitle = node.title || "Untitled Step";
+      const nodeBody = node.body || "";
+      lines.push(`h2. Step ${nodeId}: ${escapeConfluenceTitle(nodeTitle)}`);
+      lines.push("");
+      lines.push(`{anchor:step${nodeId}}`);
+      lines.push("");
+      lines.push("Description:");
+      lines.push("");
+      if (nodeBody.trim()) {
+        const bodyLines = nodeBody.trim().split("\n");
+        bodyLines.forEach((line) => {
+          lines.push(line);
+        });
+      } else {
+        lines.push("(No description)");
+      }
+      lines.push("");
+      if (node.choices && Array.isArray(node.choices) && node.choices.length > 0) {
+        lines.push("Options:");
+        lines.push("");
+        node.choices.forEach((choice) => {
+          const choiceLabel = choice.label || "";
+          const targetId = String(choice.to);
+          lines.push(`* ${escapeConfluenceText(choiceLabel)} \u2192 [Step ${targetId}|#step${targetId}]`);
+        });
+      } else {
+        lines.push("Options:");
+        lines.push("");
+        lines.push("(No options)");
+      }
+      lines.push("");
+      lines.push("");
+    });
+    return lines.join("\n");
+  }
+  function escapeConfluenceTitle(text) {
+    if (!text)
+      return "";
+    return String(text).trim();
+  }
+  function escapeConfluenceText(text) {
+    if (!text)
+      return "";
+    return String(text).replace(/\|/g, "\\|");
+  }
+
   // src/services/ImportExportService.js
   var ImportExportService = class {
     constructor(storageService) {
@@ -894,6 +969,77 @@
       const closeModal = () => {
         modal.classList.add("hidden");
         formatSelect.onchange = null;
+        copyBtn.onclick = null;
+        closeBtn.onclick = null;
+      };
+      closeBtn.onclick = closeModal;
+      modal.onclick = (e) => {
+        if (e.target === modal) {
+          closeModal();
+        }
+      };
+      const escapeHandler = (e) => {
+        if (e.key === "Escape" && !modal.classList.contains("hidden")) {
+          closeModal();
+          document.removeEventListener("keydown", escapeHandler);
+        }
+      };
+      document.addEventListener("keydown", escapeHandler);
+    }
+    /**
+     * Show Confluence export modal
+     * @param {Object} graph - Graph object
+     * @param {Object} domRegistry - DOM registry for accessing modal elements
+     */
+    showConfluenceExport(graph, domRegistry) {
+      if (!graph || !graph.nodes || graph.nodes.length === 0) {
+        alert("No graph available to export.");
+        return;
+      }
+      const modal = domRegistry.get("confluenceExportModal");
+      const textarea = domRegistry.get("confluenceExportText");
+      const copyBtn = domRegistry.get("btnCopyConfluenceExport");
+      const closeBtn = domRegistry.get("btnCloseConfluenceExport");
+      if (!modal || !textarea || !copyBtn || !closeBtn) {
+        alert("Confluence export UI elements not found.");
+        return;
+      }
+      try {
+        const exportContent = generateConfluenceExport(graph);
+        textarea.value = exportContent;
+      } catch (error) {
+        alert("Error generating Confluence export: " + error.message);
+        return;
+      }
+      modal.classList.remove("hidden");
+      copyBtn.onclick = () => {
+        textarea.select();
+        textarea.setSelectionRange(0, 99999);
+        try {
+          document.execCommand("copy");
+          const originalText = copyBtn.textContent;
+          copyBtn.textContent = "Copied!";
+          copyBtn.style.background = "linear-gradient(180deg,#5bd18a,#3e9f67)";
+          setTimeout(() => {
+            copyBtn.textContent = originalText;
+            copyBtn.style.background = "";
+          }, 2e3);
+        } catch (err) {
+          navigator.clipboard.writeText(textarea.value).then(() => {
+            const originalText = copyBtn.textContent;
+            copyBtn.textContent = "Copied!";
+            copyBtn.style.background = "linear-gradient(180deg,#5bd18a,#3e9f67)";
+            setTimeout(() => {
+              copyBtn.textContent = originalText;
+              copyBtn.style.background = "";
+            }, 2e3);
+          }).catch(() => {
+            alert("Failed to copy. Please select and copy manually.");
+          });
+        }
+      };
+      const closeModal = () => {
+        modal.classList.add("hidden");
         copyBtn.onclick = null;
         closeBtn.onclick = null;
       };
@@ -3832,6 +3978,18 @@
         };
       } else {
         console.warn("btnEmailSummary button not found in DOM");
+      }
+      if (els.btnExportConfluence) {
+        els.btnExportConfluence.onclick = () => {
+          const graph = this.state.getGraph();
+          if (!graph) {
+            alert("No graph available.");
+            return;
+          }
+          this.importExport.showConfluenceExport(graph.toJSON(), this.dom);
+        };
+      } else {
+        console.warn("btnExportConfluence button not found in DOM");
       }
       if (els.btnNewSession) {
         els.btnNewSession.onclick = () => {

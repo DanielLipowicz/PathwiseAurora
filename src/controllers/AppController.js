@@ -235,6 +235,19 @@ export class AppController {
       console.warn('btnEmailSummary button not found in DOM');
     }
 
+    if (els.btnExportConfluence) {
+      els.btnExportConfluence.onclick = () => {
+        const graph = this.state.getGraph();
+        if (!graph) {
+          alert('No graph available.');
+          return;
+        }
+        this.importExport.showConfluenceExport(graph.toJSON(), this.dom);
+      };
+    } else {
+      console.warn('btnExportConfluence button not found in DOM');
+    }
+
     // New session button
     if (els.btnNewSession) {
       els.btnNewSession.onclick = () => {

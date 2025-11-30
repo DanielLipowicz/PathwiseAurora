@@ -6,6 +6,7 @@
 import { StorageService } from './StorageService.js';
 import { migrateHistory } from '../utils/NodeUtils.js';
 import { generateEmailSummary } from '../utils/EmailSummaryGenerator.js';
+import { generateConfluenceExport } from '../utils/ConfluenceExportGenerator.js';
 
 export class ImportExportService {
   constructor(storageService) {
@@ -163,6 +164,96 @@ export class ImportExportService {
       modal.classList.add('hidden');
       // Clean up event listeners
       formatSelect.onchange = null;
+      copyBtn.onclick = null;
+      closeBtn.onclick = null;
+    };
+
+    closeBtn.onclick = closeModal;
+
+    // Close on background click
+    modal.onclick = (e) => {
+      if (e.target === modal) {
+        closeModal();
+      }
+    };
+
+    // Close on Escape key
+    const escapeHandler = (e) => {
+      if (e.key === 'Escape' && !modal.classList.contains('hidden')) {
+        closeModal();
+        document.removeEventListener('keydown', escapeHandler);
+      }
+    };
+    document.addEventListener('keydown', escapeHandler);
+  }
+
+  /**
+   * Show Confluence export modal
+   * @param {Object} graph - Graph object
+   * @param {Object} domRegistry - DOM registry for accessing modal elements
+   */
+  showConfluenceExport(graph, domRegistry) {
+    if (!graph || !graph.nodes || graph.nodes.length === 0) {
+      alert('No graph available to export.');
+      return;
+    }
+
+    const modal = domRegistry.get('confluenceExportModal');
+    const textarea = domRegistry.get('confluenceExportText');
+    const copyBtn = domRegistry.get('btnCopyConfluenceExport');
+    const closeBtn = domRegistry.get('btnCloseConfluenceExport');
+
+    if (!modal || !textarea || !copyBtn || !closeBtn) {
+      alert('Confluence export UI elements not found.');
+      return;
+    }
+
+    // Generate Confluence export
+    try {
+      const exportContent = generateConfluenceExport(graph);
+      textarea.value = exportContent;
+    } catch (error) {
+      alert('Error generating Confluence export: ' + error.message);
+      return;
+    }
+
+    // Show modal
+    modal.classList.remove('hidden');
+
+    // Handle copy button
+    copyBtn.onclick = () => {
+      textarea.select();
+      textarea.setSelectionRange(0, 99999); // For mobile devices
+      try {
+        document.execCommand('copy');
+        // Visual feedback
+        const originalText = copyBtn.textContent;
+        copyBtn.textContent = 'Copied!';
+        copyBtn.style.background = 'linear-gradient(180deg,#5bd18a,#3e9f67)';
+        setTimeout(() => {
+          copyBtn.textContent = originalText;
+          copyBtn.style.background = '';
+        }, 2000);
+      } catch (err) {
+        // Fallback for browsers that don't support execCommand
+        navigator.clipboard.writeText(textarea.value).then(() => {
+          const originalText = copyBtn.textContent;
+          copyBtn.textContent = 'Copied!';
+          copyBtn.style.background = 'linear-gradient(180deg,#5bd18a,#3e9f67)';
+          setTimeout(() => {
+            copyBtn.textContent = originalText;
+            copyBtn.style.background = '';
+          }, 2000);
+        }).catch(() => {
+          alert('Failed to copy. Please select and copy manually.');
+        });
+      }
+    };
+
+    // Handle close button
+    const closeModal = () => {
+      modal.classList.add('hidden');
+      // Clean up event listeners
       copyBtn.onclick = null;
       closeBtn.onclick = null;
     };

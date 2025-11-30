@@ -26,6 +26,7 @@ export class DOMRegistry {
       btnExport: document.getElementById('btnExport'),
       btnExportSession: document.getElementById('btnExportSession'),
       btnEmailSummary: document.getElementById('btnEmailSummary'),
+      btnExportConfluence: document.getElementById('btnExportConfluence'),
       btnNewNode: document.getElementById('btnNewNode'),
       btnNewSession: document.getElementById('btnNewSession'),
       btnViewList: document.getElementById('btnViewList'),
@@ -57,7 +58,11 @@ export class DOMRegistry {
       emailSummaryFormat: document.getElementById('emailSummaryFormat'),
       emailSummaryText: document.getElementById('emailSummaryText'),
       btnCopyEmailSummary: document.getElementById('btnCopyEmailSummary'),
-      btnCloseEmailSummary: document.getElementById('btnCloseEmailSummary')
+      btnCloseEmailSummary: document.getElementById('btnCloseEmailSummary'),
+      confluenceExportModal: document.getElementById('confluenceExportModal'),
+      confluenceExportText: document.getElementById('confluenceExportText'),
+      btnCopyConfluenceExport: document.getElementById('btnCopyConfluenceExport'),
+      btnCloseConfluenceExport: document.getElementById('btnCloseConfluenceExport')
     };
   }
 
