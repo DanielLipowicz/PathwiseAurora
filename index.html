@@ -126,6 +126,10 @@
         <textarea class="nbody" rows="3" placeholder="Content (step/problem description)"></textarea>
         <div class="choices"></div>
         <button class="btnAddChoice" style="margin-top:6px">Add Choice</button>
+        <div class="incoming-refs-section hidden" style="margin-top:12px;">
+          <div class="muted" style="font-size:12px; margin-bottom:6px;">Incoming References</div>
+          <div class="incoming-refs"></div>
+        </div>
         <div class="footer">
           <div class="row" style="gap:6px">
             <span class="badge warn hidden warn-targets">Missing target!</span>
@@ -144,6 +148,7 @@
   <template id="choiceRowTpl">
     <div class="choice-row">
       <input class="clabel" type="text" placeholder="Label (e.g. positive)" />
+      <button class="btnGotoTarget" title="Go to target node" style="display:none;">→</button>
       <input class="cto" type="text" placeholder="To # (e.g. 1.1)" />
       <button class="btnRemChoice">Remove</button>
     </div>

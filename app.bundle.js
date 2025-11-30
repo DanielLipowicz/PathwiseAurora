@@ -1456,6 +1456,8 @@
         const title = item.querySelector(".ntitle");
         const body = item.querySelector(".nbody");
         const choicesWrap = item.querySelector(".choices");
+        const incomingRefsSection = item.querySelector(".incoming-refs-section");
+        const incomingRefsContainer = item.querySelector(".incoming-refs");
         const warnTargets = item.querySelector(".warn-targets");
         const warnEmpty = item.querySelector(".warn-empty");
         title.value = node.title;
@@ -1544,6 +1546,7 @@
           const cRow = choiceRowTpl.content.firstElementChild.cloneNode(true);
           const cLabel = cRow.querySelector(".clabel");
           const cTo = cRow.querySelector(".cto");
+          const btnGoto = cRow.querySelector(".btnGotoTarget");
           const btnRem = cRow.querySelector(".btnRemChoice");
           cLabel.value = ch.label;
           cTo.value = ch.to;
@@ -1551,6 +1554,22 @@
             missing = true;
           if (!ch.label.trim())
             empty = true;
+          const updateGotoButton = () => {
+            const targetId = String(cTo.value || "").trim();
+            const hasValidTarget = targetId && ids.has(targetId);
+            if (btnGoto) {
+              btnGoto.style.display = hasValidTarget ? "" : "none";
+            }
+          };
+          updateGotoButton();
+          if (btnGoto) {
+            btnGoto.onclick = () => {
+              const targetId = String(cTo.value || "").trim();
+              if (targetId && ids.has(targetId)) {
+                this.focusOnNode(targetId);
+              }
+            };
+          }
           cLabel.onfocus = () => {
             cLabel.classList.add("expanded");
             setTimeout(() => autoResize(cLabel, 40), 0);
@@ -1576,6 +1595,7 @@
           cTo.oninput = () => {
             autoResize(cTo, 40);
             ch.to = String(cTo.value);
+            updateGotoButton();
             this.events.emit("node:updated", node);
             this.events.emit("choice:updated", { node, choice: ch });
           };
@@ -1588,6 +1608,38 @@
         });
         warnTargets.classList.toggle("hidden", !missing);
         warnEmpty.classList.toggle("hidden", !empty);
+        const incomingRefs = getIncomingReferences(node.id, graph.nodes);
+        const hasIncoming = incomingRefs.length > 0;
+        if (incomingRefsSection && incomingRefsContainer) {
+          if (hasIncoming) {
+            incomingRefsSection.classList.remove("hidden");
+            incomingRefsContainer.innerHTML = "";
+            incomingRefs.forEach((ref) => {
+              const refItem = document.createElement("div");
+              refItem.className = "incoming-ref-item";
+              const nodeId = String(ref.node.id);
+              const nodeAnchor = `#node-${nodeId}`;
+              refItem.innerHTML = `
+              <a href="${nodeAnchor}" class="ref-node-id-link" data-node-id="${escapeHtml2(nodeId)}" title="Go to node #${escapeHtml2(nodeId)}">#${escapeHtml2(nodeId)}</a>
+              <span class="ref-choice-label">"${escapeHtml2(ref.choice.label || "")}"</span>
+              <span class="ref-node-title">${escapeHtml2(ref.node.title || "")}</span>
+            `;
+              const link = refItem.querySelector(".ref-node-id-link");
+              if (link) {
+                link.onclick = (e) => {
+                  e.preventDefault();
+                  const targetNodeId = link.dataset.nodeId;
+                  if (targetNodeId) {
+                    this.focusOnNode(targetNodeId);
+                  }
+                };
+              }
+              incomingRefsContainer.appendChild(refItem);
+            });
+          } else {
+            incomingRefsSection.classList.add("hidden");
+          }
+        }
         item.querySelector(".btnAddChoice").onclick = () => {
           const firstNodeId = graph.nodes[0]?.id ?? "1";
           node.choices.push({ label: "", to: String(firstNodeId) });
@@ -1840,6 +1892,8 @@
       `;
         node.choices.forEach((choice, idx) => {
           const isValid = nodeIds.has(String(choice.to || ""));
+          const targetId = String(choice.to || "").trim();
+          const hasValidTarget = targetId && nodeIds.has(targetId);
           html += `
           <div class="choice-item ${!isValid ? "invalid" : ""}" data-choice-index="${idx}">
             <input type="text" class="choice-label-input" 
@@ -1847,6 +1901,12 @@
                    data-choice-index="${idx}"
                    value="${escapeHtml2(choice.label || "")}" 
                    placeholder="Choice label" />
+            <button class="btn-goto-choice-target" 
+                    data-node-id="${escapeHtml2(String(node.id))}" 
+                    data-choice-index="${idx}"
+                    data-target-id="${escapeHtml2(targetId)}"
+                    title="Go to target node"
+                    style="${hasValidTarget ? "" : "display:none;"}">\u2192</button>
             <input type="text" class="choice-target-input" 
                    data-node-id="${escapeHtml2(String(node.id))}" 
                    data-choice-index="${idx}"
@@ -1871,13 +1931,17 @@
               <div class="incoming-refs">
       ` : ""}
       
-      ${incomingRefs.map((ref) => `
+      ${incomingRefs.map((ref) => {
+          const nodeId = String(ref.node.id);
+          const nodeAnchor = `#node-${nodeId}`;
+          return `
                 <div class="incoming-ref-item">
-                  <span class="ref-node-id">#${escapeHtml2(String(ref.node.id))}</span>
+                  <a href="${nodeAnchor}" class="ref-node-id-link" data-node-id="${escapeHtml2(nodeId)}" title="Go to node #${escapeHtml2(nodeId)}">#${escapeHtml2(nodeId)}</a>
                   <span class="ref-choice-label">"${escapeHtml2(ref.choice.label || "")}"</span>
                   <span class="ref-node-title">${escapeHtml2(ref.node.title || "")}</span>
                 </div>
-      `).join("")}
+      `;
+        }).join("")}
       
       ${hasIncoming ? `
               </div>
@@ -2089,8 +2153,25 @@
           const node = byId(nodeId, graph.nodes);
           if (node && node.choices[choiceIndex]) {
             node.choices[choiceIndex].to = String(input.value);
+            const choiceItem = input.closest(".choice-item");
+            const gotoBtn = choiceItem ? choiceItem.querySelector(".btn-goto-choice-target") : null;
+            if (gotoBtn) {
+              const targetId = String(input.value || "").trim();
+              const nodeIds = new Set(graph.nodes.map((n) => String(n.id)));
+              const hasValidTarget = targetId && nodeIds.has(targetId);
+              gotoBtn.style.display = hasValidTarget ? "" : "none";
+              gotoBtn.dataset.targetId = escapeHtml2(targetId);
+            }
             this.events.emit("node:updated", node);
             this.events.emit("choice:updated", { node, choice: node.choices[choiceIndex] });
+          }
+        };
+      });
+      container.querySelectorAll(".btn-goto-choice-target").forEach((btn) => {
+        btn.onclick = () => {
+          const targetId = btn.dataset.targetId;
+          if (targetId) {
+            this.focusOnNode(targetId);
           }
         };
       });
@@ -2149,6 +2230,15 @@
           const node = byId(nodeId, graph.nodes);
           if (node) {
             this.events.emit("node:add-child-requested", node);
+          }
+        };
+      });
+      container.querySelectorAll(".ref-node-id-link").forEach((link) => {
+        link.onclick = (e) => {
+          e.preventDefault();
+          const nodeId = link.dataset.nodeId;
+          if (nodeId) {
+            this.focusOnNode(nodeId);
           }
         };
       });

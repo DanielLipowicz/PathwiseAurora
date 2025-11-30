@@ -199,6 +199,8 @@ export class NodesPageView {
 
       node.choices.forEach((choice, idx) => {
         const isValid = nodeIds.has(String(choice.to || ''));
+        const targetId = String(choice.to || '').trim();
+        const hasValidTarget = targetId && nodeIds.has(targetId);
         html += `
           <div class="choice-item ${!isValid ? 'invalid' : ''}" data-choice-index="${idx}">
             <input type="text" class="choice-label-input" 
@@ -206,6 +208,12 @@ export class NodesPageView {
                    data-choice-index="${idx}"
                    value="${escapeHtml(choice.label || '')}" 
                    placeholder="Choice label" />
+            <button class="btn-goto-choice-target" 
+                    data-node-id="${escapeHtml(String(node.id))}" 
+                    data-choice-index="${idx}"
+                    data-target-id="${escapeHtml(targetId)}"
+                    title="Go to target node"
+                    style="${hasValidTarget ? '' : 'display:none;'}">→</button>
             <input type="text" class="choice-target-input" 
                    data-node-id="${escapeHtml(String(node.id))}" 
                    data-choice-index="${idx}"
@@ -231,13 +239,17 @@ export class NodesPageView {
               <div class="incoming-refs">
       ` : ''}
       
-      ${incomingRefs.map(ref => `
+      ${incomingRefs.map(ref => {
+        const nodeId = String(ref.node.id);
+        const nodeAnchor = `#node-${nodeId}`;
+        return `
                 <div class="incoming-ref-item">
-                  <span class="ref-node-id">#${escapeHtml(String(ref.node.id))}</span>
+                  <a href="${nodeAnchor}" class="ref-node-id-link" data-node-id="${escapeHtml(nodeId)}" title="Go to node #${escapeHtml(nodeId)}">#${escapeHtml(nodeId)}</a>
                   <span class="ref-choice-label">"${escapeHtml(ref.choice.label || '')}"</span>
                   <span class="ref-node-title">${escapeHtml(ref.node.title || '')}</span>
                 </div>
-      `).join('')}
+      `;
+      }).join('')}
       
       ${hasIncoming ? `
               </div>
@@ -494,8 +506,30 @@ export class NodesPageView {
         const node = byId(nodeId, graph.nodes);
         if (node && node.choices[choiceIndex]) {
           node.choices[choiceIndex].to = String(input.value);
+          
+          // Update goto button visibility
+          const choiceItem = input.closest('.choice-item');
+          const gotoBtn = choiceItem ? choiceItem.querySelector('.btn-goto-choice-target') : null;
+          if (gotoBtn) {
+            const targetId = String(input.value || '').trim();
+            const nodeIds = new Set(graph.nodes.map(n => String(n.id)));
+            const hasValidTarget = targetId && nodeIds.has(targetId);
+            gotoBtn.style.display = hasValidTarget ? '' : 'none';
+            gotoBtn.dataset.targetId = escapeHtml(targetId);
+          }
+          
           this.events.emit('node:updated', node);
           this.events.emit('choice:updated', { node, choice: node.choices[choiceIndex] });
+        }
+      };
+    });
+
+    // Choice goto target buttons
+    container.querySelectorAll('.btn-goto-choice-target').forEach(btn => {
+      btn.onclick = () => {
+        const targetId = btn.dataset.targetId;
+        if (targetId) {
+          this.focusOnNode(targetId);
         }
       };
     });
@@ -563,6 +597,17 @@ export class NodesPageView {
         const node = byId(nodeId, graph.nodes);
         if (node) {
           this.events.emit('node:add-child-requested', node);
+        }
+      };
+    });
+
+    // Incoming reference links (preceding nodes)
+    container.querySelectorAll('.ref-node-id-link').forEach(link => {
+      link.onclick = (e) => {
+        e.preventDefault();
+        const nodeId = link.dataset.nodeId;
+        if (nodeId) {
+          this.focusOnNode(nodeId);
         }
       };
     });

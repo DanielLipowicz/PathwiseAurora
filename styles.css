@@ -87,7 +87,25 @@ button.danger { border-color:#6b1f1f; color:#ffd5d5; background:#3a1010; }
 .badge.ok { color:#003116; background:#5bd18a; border-color:#3e9f67; }
 .badge.danger { color:#3b0000; background:#ff6b6b; border-color:#c24a4a; }
 .choices { display:flex; flex-direction:column; gap:6px; }
-.choices .choice-row { display:grid; grid-template-columns: 1fr 80px auto; gap:6px; }
+.choices .choice-row { display:grid; grid-template-columns: 1fr auto 80px auto; gap:6px; align-items:center; }
+.choices .btnGotoTarget {
+  padding: 4px 8px;
+  min-width: 32px;
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  background: var(--primary);
+  color: white;
+  border: 1px solid var(--primary);
+  border-radius: 6px;
+  transition: opacity 0.2s;
+}
+.choices .btnGotoTarget:hover {
+  opacity: 0.8;
+}
+.choices .btnGotoTarget:active {
+  opacity: 0.6;
+}
 .divider { height:1px; background:#1f2a35; margin:6px 0; }
 .runner h2 { margin:0 0 6px; }
 .muted { color:var(--muted); }
@@ -458,7 +476,7 @@ button.danger { border-color:#6b1f1f; color:#ffd5d5; background:#3a1010; }
 }
 .choice-item {
   display: grid;
-  grid-template-columns: 1fr 120px auto auto;
+  grid-template-columns: 1fr auto 120px auto auto;
   gap: 8px;
   align-items: center;
   padding: 8px;
@@ -500,6 +518,29 @@ button.danger { border-color:#6b1f1f; color:#ffd5d5; background:#3a1010; }
   background: rgba(255,107,107,0.2);
   border-color: var(--danger);
 }
+.btn-goto-choice-target {
+  padding: 4px 8px;
+  min-width: 32px;
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  background: var(--primary);
+  color: white;
+  border: 1px solid var(--primary);
+  border-radius: 6px;
+  transition: opacity 0.2s;
+  width: 32px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.btn-goto-choice-target:hover {
+  opacity: 0.8;
+}
+.btn-goto-choice-target:active {
+  opacity: 0.6;
+}
 .incoming-refs {
   display: flex;
   flex-direction: column;
@@ -522,6 +563,20 @@ button.danger { border-color:#6b1f1f; color:#ffd5d5; background:#3a1010; }
 .ref-node-id {
   font-weight: 600;
   color: var(--primary);
+}
+.ref-node-id-link {
+  font-weight: 600;
+  color: var(--primary);
+  text-decoration: none;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+.ref-node-id-link:hover {
+  opacity: 0.8;
+  text-decoration: underline;
+}
+.ref-node-id-link:active {
+  opacity: 0.6;
 }
 .ref-choice-label {
   color: var(--muted);

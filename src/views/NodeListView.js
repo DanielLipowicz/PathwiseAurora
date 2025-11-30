@@ -5,7 +5,7 @@
 
 import { escapeHtml } from '../utils/HtmlUtils.js';
 import { compareIds } from '../utils/IdUtils.js';
-import { byId, getParentId, getChildren, getSiblings, getNextSibling, getPrevSibling } from '../utils/NodeUtils.js';
+import { byId, getParentId, getChildren, getSiblings, getNextSibling, getPrevSibling, getIncomingReferences } from '../utils/NodeUtils.js';
 
 export class NodeListView {
   constructor(stateManager, eventBus, domRegistry) {
@@ -119,6 +119,8 @@ export class NodeListView {
       const title = item.querySelector('.ntitle');
       const body = item.querySelector('.nbody');
       const choicesWrap = item.querySelector('.choices');
+      const incomingRefsSection = item.querySelector('.incoming-refs-section');
+      const incomingRefsContainer = item.querySelector('.incoming-refs');
       const warnTargets = item.querySelector('.warn-targets');
       const warnEmpty = item.querySelector('.warn-empty');
 
@@ -226,12 +228,35 @@ export class NodeListView {
         const cRow = choiceRowTpl.content.firstElementChild.cloneNode(true);
         const cLabel = cRow.querySelector('.clabel');
         const cTo = cRow.querySelector('.cto');
+        const btnGoto = cRow.querySelector('.btnGotoTarget');
         const btnRem = cRow.querySelector('.btnRemChoice');
 
         cLabel.value = ch.label;
         cTo.value = ch.to;
         if (!ids.has(String(ch.to))) missing = true;
         if (!ch.label.trim()) empty = true;
+
+        // Function to update goto button visibility
+        const updateGotoButton = () => {
+          const targetId = String(cTo.value || '').trim();
+          const hasValidTarget = targetId && ids.has(targetId);
+          if (btnGoto) {
+            btnGoto.style.display = hasValidTarget ? '' : 'none';
+          }
+        };
+
+        // Initialize goto button visibility
+        updateGotoButton();
+
+        // Handle goto button click
+        if (btnGoto) {
+          btnGoto.onclick = () => {
+            const targetId = String(cTo.value || '').trim();
+            if (targetId && ids.has(targetId)) {
+              this.focusOnNode(targetId);
+            }
+          };
+        }
 
         // Expand choice label input on focus and auto-resize to content
         cLabel.onfocus = () => {
@@ -263,6 +288,7 @@ export class NodeListView {
         cTo.oninput = () => {
           autoResize(cTo, 40);
           ch.to = String(cTo.value);
+          updateGotoButton(); // Update goto button visibility when target changes
           this.events.emit('node:updated', node);
           this.events.emit('choice:updated', { node, choice: ch });
         };
@@ -278,6 +304,45 @@ export class NodeListView {
 
       warnTargets.classList.toggle('hidden', !missing);
       warnEmpty.classList.toggle('hidden', !empty);
+
+      // Incoming References
+      const incomingRefs = getIncomingReferences(node.id, graph.nodes);
+      const hasIncoming = incomingRefs.length > 0;
+      
+      if (incomingRefsSection && incomingRefsContainer) {
+        if (hasIncoming) {
+          incomingRefsSection.classList.remove('hidden');
+          incomingRefsContainer.innerHTML = '';
+          
+          incomingRefs.forEach(ref => {
+            const refItem = document.createElement('div');
+            refItem.className = 'incoming-ref-item';
+            const nodeId = String(ref.node.id);
+            const nodeAnchor = `#node-${nodeId}`;
+            refItem.innerHTML = `
+              <a href="${nodeAnchor}" class="ref-node-id-link" data-node-id="${escapeHtml(nodeId)}" title="Go to node #${escapeHtml(nodeId)}">#${escapeHtml(nodeId)}</a>
+              <span class="ref-choice-label">"${escapeHtml(ref.choice.label || '')}"</span>
+              <span class="ref-node-title">${escapeHtml(ref.node.title || '')}</span>
+            `;
+            
+            // Add click handler for the link
+            const link = refItem.querySelector('.ref-node-id-link');
+            if (link) {
+              link.onclick = (e) => {
+                e.preventDefault();
+                const targetNodeId = link.dataset.nodeId;
+                if (targetNodeId) {
+                  this.focusOnNode(targetNodeId);
+                }
+              };
+            }
+            
+            incomingRefsContainer.appendChild(refItem);
+          });
+        } else {
+          incomingRefsSection.classList.add('hidden');
+        }
+      }
 
       item.querySelector('.btnAddChoice').onclick = () => {
         const firstNodeId = graph.nodes[0]?.id ?? '1';
