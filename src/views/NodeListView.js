@@ -125,6 +125,47 @@ export class NodeListView {
       title.value = node.title;
       body.value = node.body;
 
+      // Function to auto-resize input/textarea to fit content
+      const autoResize = (element, minHeight = 40) => {
+        // Only resize if element has expanded class (is focused)
+        if (!element.classList.contains('expanded')) {
+          // Reset to default height when not expanded
+          element.style.height = '';
+          return;
+        }
+
+        if (element.tagName === 'TEXTAREA') {
+          // For textarea, use scrollHeight to measure content
+          element.style.height = 'auto';
+          const newHeight = Math.max(minHeight, element.scrollHeight);
+          element.style.height = newHeight + 'px';
+        } else if (element.tagName === 'INPUT') {
+          // For input fields, measure text height using a temporary element
+          const temp = document.createElement('div');
+          const styles = window.getComputedStyle(element);
+          temp.style.position = 'absolute';
+          temp.style.visibility = 'hidden';
+          temp.style.whiteSpace = 'pre-wrap';
+          temp.style.wordWrap = 'break-word';
+          temp.style.overflowWrap = 'break-word';
+          temp.style.width = (element.offsetWidth || 200) + 'px';
+          temp.style.font = styles.font;
+          temp.style.fontSize = styles.fontSize;
+          temp.style.fontFamily = styles.fontFamily;
+          temp.style.fontWeight = styles.fontWeight;
+          temp.style.lineHeight = styles.lineHeight;
+          temp.style.padding = styles.padding;
+          temp.style.border = styles.border;
+          temp.style.boxSizing = styles.boxSizing;
+          temp.style.margin = styles.margin;
+          temp.textContent = element.value || element.placeholder || 'M';
+          document.body.appendChild(temp);
+          const newHeight = Math.max(minHeight, temp.offsetHeight);
+          document.body.removeChild(temp);
+          element.style.height = newHeight + 'px';
+        }
+      };
+
       // Function to update local validation badges
       const updateLocalBadges = () => {
         let missing = false;
@@ -142,13 +183,35 @@ export class NodeListView {
         warnEmpty.classList.toggle('hidden', !empty);
       };
 
+      // Expand input on focus and auto-resize to content
+      title.onfocus = () => {
+        title.classList.add('expanded');
+        setTimeout(() => autoResize(title, 40), 0);
+      };
+      title.onblur = () => {
+        title.classList.remove('expanded');
+        title.style.height = ''; // Reset to default height
+      };
+
       title.oninput = () => {
+        autoResize(title, 40);
         node.title = title.value;
         this.events.emit('node:updated', node);
         this.events.emit('node:title-changed', { node, title: title.value });
       };
 
+      // Expand textarea on focus and auto-resize to content
+      body.onfocus = () => {
+        body.classList.add('expanded');
+        setTimeout(() => autoResize(body, 60), 0);
+      };
+      body.onblur = () => {
+        body.classList.remove('expanded');
+        body.style.height = ''; // Reset to default height
+      };
+
       body.oninput = () => {
+        autoResize(body, 60);
         node.body = body.value;
         this.events.emit('node:updated', node);
         this.events.emit('node:body-changed', { node, body: body.value });
@@ -170,13 +233,35 @@ export class NodeListView {
         if (!ids.has(String(ch.to))) missing = true;
         if (!ch.label.trim()) empty = true;
 
+        // Expand choice label input on focus and auto-resize to content
+        cLabel.onfocus = () => {
+          cLabel.classList.add('expanded');
+          setTimeout(() => autoResize(cLabel, 40), 0);
+        };
+        cLabel.onblur = () => {
+          cLabel.classList.remove('expanded');
+          cLabel.style.height = ''; // Reset to default height
+        };
+
         cLabel.oninput = () => {
+          autoResize(cLabel, 40);
           ch.label = cLabel.value;
           this.events.emit('node:updated', node);
           this.events.emit('choice:updated', { node, choice: ch });
         };
 
+        // Expand choice target input on focus and auto-resize to content
+        cTo.onfocus = () => {
+          cTo.classList.add('expanded');
+          setTimeout(() => autoResize(cTo, 40), 0);
+        };
+        cTo.onblur = () => {
+          cTo.classList.remove('expanded');
+          cTo.style.height = ''; // Reset to default height
+        };
+
         cTo.oninput = () => {
+          autoResize(cTo, 40);
           ch.to = String(cTo.value);
           this.events.emit('node:updated', node);
           this.events.emit('choice:updated', { node, choice: ch });

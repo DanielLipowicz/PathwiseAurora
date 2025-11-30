@@ -319,6 +319,49 @@ export class NodesPageView {
   }
 
   /**
+   * Function to auto-resize input/textarea to fit content
+   */
+  autoResize(element, minHeight = 40) {
+    // Only resize if element has expanded class (is focused)
+    if (!element.classList.contains('expanded')) {
+      // Reset to default height when not expanded
+      element.style.height = '';
+      return;
+    }
+
+    if (element.tagName === 'TEXTAREA') {
+      // For textarea, use scrollHeight to measure content
+      element.style.height = 'auto';
+      const newHeight = Math.max(minHeight, element.scrollHeight);
+      element.style.height = newHeight + 'px';
+    } else if (element.tagName === 'INPUT') {
+      // For input fields, measure text height using a temporary element
+      const temp = document.createElement('div');
+      const styles = window.getComputedStyle(element);
+      temp.style.position = 'absolute';
+      temp.style.visibility = 'hidden';
+      temp.style.whiteSpace = 'pre-wrap';
+      temp.style.wordWrap = 'break-word';
+      temp.style.overflowWrap = 'break-word';
+      temp.style.width = (element.offsetWidth || 200) + 'px';
+      temp.style.font = styles.font;
+      temp.style.fontSize = styles.fontSize;
+      temp.style.fontFamily = styles.fontFamily;
+      temp.style.fontWeight = styles.fontWeight;
+      temp.style.lineHeight = styles.lineHeight;
+      temp.style.padding = styles.padding;
+      temp.style.border = styles.border;
+      temp.style.boxSizing = styles.boxSizing;
+      temp.style.margin = styles.margin;
+      temp.textContent = element.value || element.placeholder || 'M';
+      document.body.appendChild(temp);
+      const newHeight = Math.max(minHeight, temp.offsetHeight);
+      document.body.removeChild(temp);
+      element.style.height = newHeight + 'px';
+    }
+  }
+
+  /**
    * Attach event listeners to dynamically created elements
    */
   attachEventListeners() {
@@ -359,7 +402,18 @@ export class NodesPageView {
 
     // Node title inputs
     container.querySelectorAll('.node-title-input').forEach(input => {
+      // Expand input on focus and auto-resize to content
+      input.onfocus = () => {
+        input.classList.add('expanded');
+        setTimeout(() => this.autoResize(input, 40), 0);
+      };
+      input.onblur = () => {
+        input.classList.remove('expanded');
+        input.style.height = ''; // Reset to default height
+      };
+      
       input.oninput = () => {
+        this.autoResize(input, 40);
         const nodeId = input.dataset.nodeId;
         const graph = this.state.getGraph();
         const node = byId(nodeId, graph.nodes);
@@ -372,7 +426,18 @@ export class NodesPageView {
 
     // Node description inputs
     container.querySelectorAll('.node-description-input').forEach(textarea => {
+      // Expand textarea on focus and auto-resize to content
+      textarea.onfocus = () => {
+        textarea.classList.add('expanded');
+        setTimeout(() => this.autoResize(textarea, 60), 0);
+      };
+      textarea.onblur = () => {
+        textarea.classList.remove('expanded');
+        textarea.style.height = ''; // Reset to default height
+      };
+      
       textarea.oninput = () => {
+        this.autoResize(textarea, 60);
         const nodeId = textarea.dataset.nodeId;
         const graph = this.state.getGraph();
         const node = byId(nodeId, graph.nodes);
@@ -385,7 +450,18 @@ export class NodesPageView {
 
     // Choice label inputs
     container.querySelectorAll('.choice-label-input').forEach(input => {
+      // Expand choice label input on focus and auto-resize to content
+      input.onfocus = () => {
+        input.classList.add('expanded');
+        setTimeout(() => this.autoResize(input, 40), 0);
+      };
+      input.onblur = () => {
+        input.classList.remove('expanded');
+        input.style.height = ''; // Reset to default height
+      };
+      
       input.oninput = () => {
+        this.autoResize(input, 40);
         const nodeId = input.dataset.nodeId;
         const choiceIndex = parseInt(input.dataset.choiceIndex);
         const graph = this.state.getGraph();
@@ -400,7 +476,18 @@ export class NodesPageView {
 
     // Choice target inputs
     container.querySelectorAll('.choice-target-input').forEach(input => {
+      // Expand choice target input on focus and auto-resize to content
+      input.onfocus = () => {
+        input.classList.add('expanded');
+        setTimeout(() => this.autoResize(input, 40), 0);
+      };
+      input.onblur = () => {
+        input.classList.remove('expanded');
+        input.style.height = ''; // Reset to default height
+      };
+      
       input.oninput = () => {
+        this.autoResize(input, 40);
         const nodeId = input.dataset.nodeId;
         const choiceIndex = parseInt(input.dataset.choiceIndex);
         const graph = this.state.getGraph();

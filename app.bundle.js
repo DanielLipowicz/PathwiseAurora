@@ -1460,6 +1460,40 @@
         const warnEmpty = item.querySelector(".warn-empty");
         title.value = node.title;
         body.value = node.body;
+        const autoResize = (element, minHeight = 40) => {
+          if (!element.classList.contains("expanded")) {
+            element.style.height = "";
+            return;
+          }
+          if (element.tagName === "TEXTAREA") {
+            element.style.height = "auto";
+            const newHeight = Math.max(minHeight, element.scrollHeight);
+            element.style.height = newHeight + "px";
+          } else if (element.tagName === "INPUT") {
+            const temp = document.createElement("div");
+            const styles = window.getComputedStyle(element);
+            temp.style.position = "absolute";
+            temp.style.visibility = "hidden";
+            temp.style.whiteSpace = "pre-wrap";
+            temp.style.wordWrap = "break-word";
+            temp.style.overflowWrap = "break-word";
+            temp.style.width = (element.offsetWidth || 200) + "px";
+            temp.style.font = styles.font;
+            temp.style.fontSize = styles.fontSize;
+            temp.style.fontFamily = styles.fontFamily;
+            temp.style.fontWeight = styles.fontWeight;
+            temp.style.lineHeight = styles.lineHeight;
+            temp.style.padding = styles.padding;
+            temp.style.border = styles.border;
+            temp.style.boxSizing = styles.boxSizing;
+            temp.style.margin = styles.margin;
+            temp.textContent = element.value || element.placeholder || "M";
+            document.body.appendChild(temp);
+            const newHeight = Math.max(minHeight, temp.offsetHeight);
+            document.body.removeChild(temp);
+            element.style.height = newHeight + "px";
+          }
+        };
         const updateLocalBadges = () => {
           let missing2 = false;
           let empty2 = !title.value.trim() || !body.value.trim();
@@ -1475,12 +1509,30 @@
           warnTargets.classList.toggle("hidden", !missing2);
           warnEmpty.classList.toggle("hidden", !empty2);
         };
+        title.onfocus = () => {
+          title.classList.add("expanded");
+          setTimeout(() => autoResize(title, 40), 0);
+        };
+        title.onblur = () => {
+          title.classList.remove("expanded");
+          title.style.height = "";
+        };
         title.oninput = () => {
+          autoResize(title, 40);
           node.title = title.value;
           this.events.emit("node:updated", node);
           this.events.emit("node:title-changed", { node, title: title.value });
         };
+        body.onfocus = () => {
+          body.classList.add("expanded");
+          setTimeout(() => autoResize(body, 60), 0);
+        };
+        body.onblur = () => {
+          body.classList.remove("expanded");
+          body.style.height = "";
+        };
         body.oninput = () => {
+          autoResize(body, 60);
           node.body = body.value;
           this.events.emit("node:updated", node);
           this.events.emit("node:body-changed", { node, body: body.value });
@@ -1499,12 +1551,30 @@
             missing = true;
           if (!ch.label.trim())
             empty = true;
+          cLabel.onfocus = () => {
+            cLabel.classList.add("expanded");
+            setTimeout(() => autoResize(cLabel, 40), 0);
+          };
+          cLabel.onblur = () => {
+            cLabel.classList.remove("expanded");
+            cLabel.style.height = "";
+          };
           cLabel.oninput = () => {
+            autoResize(cLabel, 40);
             ch.label = cLabel.value;
             this.events.emit("node:updated", node);
             this.events.emit("choice:updated", { node, choice: ch });
           };
+          cTo.onfocus = () => {
+            cTo.classList.add("expanded");
+            setTimeout(() => autoResize(cTo, 40), 0);
+          };
+          cTo.onblur = () => {
+            cTo.classList.remove("expanded");
+            cTo.style.height = "";
+          };
           cTo.oninput = () => {
+            autoResize(cTo, 40);
             ch.to = String(cTo.value);
             this.events.emit("node:updated", node);
             this.events.emit("choice:updated", { node, choice: ch });
@@ -1873,6 +1943,43 @@
       }
     }
     /**
+     * Function to auto-resize input/textarea to fit content
+     */
+    autoResize(element, minHeight = 40) {
+      if (!element.classList.contains("expanded")) {
+        element.style.height = "";
+        return;
+      }
+      if (element.tagName === "TEXTAREA") {
+        element.style.height = "auto";
+        const newHeight = Math.max(minHeight, element.scrollHeight);
+        element.style.height = newHeight + "px";
+      } else if (element.tagName === "INPUT") {
+        const temp = document.createElement("div");
+        const styles = window.getComputedStyle(element);
+        temp.style.position = "absolute";
+        temp.style.visibility = "hidden";
+        temp.style.whiteSpace = "pre-wrap";
+        temp.style.wordWrap = "break-word";
+        temp.style.overflowWrap = "break-word";
+        temp.style.width = (element.offsetWidth || 200) + "px";
+        temp.style.font = styles.font;
+        temp.style.fontSize = styles.fontSize;
+        temp.style.fontFamily = styles.fontFamily;
+        temp.style.fontWeight = styles.fontWeight;
+        temp.style.lineHeight = styles.lineHeight;
+        temp.style.padding = styles.padding;
+        temp.style.border = styles.border;
+        temp.style.boxSizing = styles.boxSizing;
+        temp.style.margin = styles.margin;
+        temp.textContent = element.value || element.placeholder || "M";
+        document.body.appendChild(temp);
+        const newHeight = Math.max(minHeight, temp.offsetHeight);
+        document.body.removeChild(temp);
+        element.style.height = newHeight + "px";
+      }
+    }
+    /**
      * Attach event listeners to dynamically created elements
      */
     attachEventListeners() {
@@ -1904,7 +2011,16 @@
         };
       }
       container.querySelectorAll(".node-title-input").forEach((input) => {
+        input.onfocus = () => {
+          input.classList.add("expanded");
+          setTimeout(() => this.autoResize(input, 40), 0);
+        };
+        input.onblur = () => {
+          input.classList.remove("expanded");
+          input.style.height = "";
+        };
         input.oninput = () => {
+          this.autoResize(input, 40);
           const nodeId = input.dataset.nodeId;
           const graph = this.state.getGraph();
           const node = byId(nodeId, graph.nodes);
@@ -1915,7 +2031,16 @@
         };
       });
       container.querySelectorAll(".node-description-input").forEach((textarea) => {
+        textarea.onfocus = () => {
+          textarea.classList.add("expanded");
+          setTimeout(() => this.autoResize(textarea, 60), 0);
+        };
+        textarea.onblur = () => {
+          textarea.classList.remove("expanded");
+          textarea.style.height = "";
+        };
         textarea.oninput = () => {
+          this.autoResize(textarea, 60);
           const nodeId = textarea.dataset.nodeId;
           const graph = this.state.getGraph();
           const node = byId(nodeId, graph.nodes);
@@ -1926,7 +2051,16 @@
         };
       });
       container.querySelectorAll(".choice-label-input").forEach((input) => {
+        input.onfocus = () => {
+          input.classList.add("expanded");
+          setTimeout(() => this.autoResize(input, 40), 0);
+        };
+        input.onblur = () => {
+          input.classList.remove("expanded");
+          input.style.height = "";
+        };
         input.oninput = () => {
+          this.autoResize(input, 40);
           const nodeId = input.dataset.nodeId;
           const choiceIndex = parseInt(input.dataset.choiceIndex);
           const graph = this.state.getGraph();
@@ -1939,7 +2073,16 @@
         };
       });
       container.querySelectorAll(".choice-target-input").forEach((input) => {
+        input.onfocus = () => {
+          input.classList.add("expanded");
+          setTimeout(() => this.autoResize(input, 40), 0);
+        };
+        input.onblur = () => {
+          input.classList.remove("expanded");
+          input.style.height = "";
+        };
         input.oninput = () => {
+          this.autoResize(input, 40);
           const nodeId = input.dataset.nodeId;
           const choiceIndex = parseInt(input.dataset.choiceIndex);
           const graph = this.state.getGraph();
