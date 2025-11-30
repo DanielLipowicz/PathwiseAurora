@@ -263,6 +263,16 @@ button.danger { border-color:#6b1f1f; color:#ffd5d5; background:#3a1010; }
   flex: 1;
   max-width: 500px;
 }
+.nodes-page-search-container {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 16px;
+}
+.nodes-page-search-container input {
+  flex: 1;
+  min-width: 200px;
+}
 .nodes-page-search {
   flex: 1;
   min-width: 200px;

@@ -1621,6 +1621,7 @@
       this.events = eventBus;
       this.dom = domRegistry;
       this.pendingFocusNodeId = null;
+      this.filterQuery = "";
       this.setupEventListeners();
     }
     setupEventListeners() {
@@ -1646,19 +1647,29 @@
      * Render the nodes page
      * @param {string} filterQuery - Optional filter query
      */
-    render(filterQuery = "") {
+    render(filterQuery = null) {
       const container = this.dom.get("nodesPageContainer");
       if (!container)
         return;
       const graph = this.state.getGraph();
       if (!graph)
         return;
+      if (filterQuery !== null) {
+        this.filterQuery = filterQuery;
+      }
       const nodeIdToFocus = this.pendingFocusNodeId;
       this.pendingFocusNodeId = null;
       const scrollContainer = container.querySelector(".nodes-page-list") || container;
       const scrollTop = scrollContainer.scrollTop;
       const activeElement = document.activeElement;
       let activeElementState = null;
+      let searchInputState = null;
+      if (activeElement && activeElement.id === "nodesPageSearch") {
+        searchInputState = {
+          selectionStart: activeElement.selectionStart,
+          selectionEnd: activeElement.selectionEnd
+        };
+      }
       if (activeElement && (activeElement.tagName === "INPUT" || activeElement.tagName === "TEXTAREA")) {
         activeElementState = {
           nodeId: activeElement.dataset?.nodeId,
@@ -1668,21 +1679,42 @@
           selectionEnd: activeElement.selectionEnd
         };
       }
-      const q = filterQuery || (this.dom.get("nodesPageSearch") ? this.dom.get("nodesPageSearch").value.toLowerCase() : "");
-      const nodes = [...graph.nodes].sort((a, b) => compareIds(a.id, b.id)).filter((n) => !q || String(n.id).includes(q) || n.title.toLowerCase().includes(q) || n.body.toLowerCase().includes(q));
+      const q = (this.filterQuery || "").toLowerCase();
+      const allNodes = [...graph.nodes].sort((a, b) => compareIds(a.id, b.id));
+      const nodes = allNodes.filter((n) => {
+        if (!q)
+          return true;
+        if (String(n.id).includes(q) || n.title && n.title.toLowerCase().includes(q) || n.body && n.body.toLowerCase().includes(q)) {
+          return true;
+        }
+        if (n.choices && Array.isArray(n.choices)) {
+          return n.choices.some(
+            (choice) => choice.label && choice.label.toLowerCase().includes(q)
+          );
+        }
+        return false;
+      });
       const nodeIds = new Set(graph.nodes.map((n) => String(n.id)));
       let html = `
       <div class="nodes-page-header">
         <h2>Knowledge Graph Management</h2>
         <div class="nodes-page-actions">
-          <input type="text" id="nodesPageSearch" class="nodes-page-search" 
-                 placeholder="Search nodes (ID/title/description)\u2026" />
           <button id="btnNodesPageNewNode" class="primary">New Node</button>
         </div>
       </div>
+      <div class="nodes-page-search-container">
+        <input type="text" id="nodesPageSearch" 
+               placeholder="Search nodes (id/title/content/choices)..." 
+               value="${escapeHtml2(this.filterQuery)}"
+               style="flex: 1; width: 100%;" />
+        <button id="btnNodesPageClearFilters" 
+                class="ghost" 
+                title="Clear filters"
+                ${this.filterQuery ? "" : 'style="display: none;"'}>Clear Filters</button>
+      </div>
       <div class="nodes-page-stats">
-        <span class="stat-item">Total Nodes: <strong>${nodes.length}</strong></span>
-        <span class="stat-item">Filtered: <strong>${nodes.length}</strong></span>
+        <span class="stat-item">Total Nodes: <strong>${allNodes.length}</strong></span>
+        ${q ? `<span class="stat-item">Filtered: <strong>${nodes.length}</strong></span>` : ""}
       </div>
       <div class="nodes-page-list" id="nodesPageList">
     `;
@@ -1793,6 +1825,20 @@
     `;
       container.innerHTML = html;
       this.attachEventListeners();
+      if (searchInputState) {
+        setTimeout(() => {
+          const searchInput = container.querySelector("#nodesPageSearch");
+          if (searchInput) {
+            searchInput.focus();
+            if (searchInput.setSelectionRange && searchInputState.selectionStart !== null) {
+              try {
+                searchInput.setSelectionRange(searchInputState.selectionStart, searchInputState.selectionEnd);
+              } catch (e) {
+              }
+            }
+          }
+        }, 0);
+      }
       const newScrollContainer = container.querySelector(".nodes-page-list") || container;
       if (newScrollContainer && scrollTop !== void 0) {
         newScrollContainer.scrollTop = scrollTop;
@@ -1833,14 +1879,28 @@
       const container = this.dom.get("nodesPageContainer");
       if (!container)
         return;
-      const searchInput = container.querySelector("#nodesPageSearch");
-      if (searchInput) {
-        searchInput.oninput = () => this.render();
-      }
       const btnNewNode = container.querySelector("#btnNodesPageNewNode");
       if (btnNewNode) {
         btnNewNode.onclick = () => {
           this.events.emit("node:create-requested");
+        };
+      }
+      const searchInput = container.querySelector("#nodesPageSearch");
+      if (searchInput) {
+        searchInput.addEventListener("input", () => {
+          this.filterQuery = searchInput.value;
+          const clearBtn = container.querySelector("#btnNodesPageClearFilters");
+          if (clearBtn) {
+            clearBtn.style.display = this.filterQuery ? "" : "none";
+          }
+          this.render();
+        });
+      }
+      const clearFiltersBtn = container.querySelector("#btnNodesPageClearFilters");
+      if (clearFiltersBtn) {
+        clearFiltersBtn.onclick = () => {
+          this.filterQuery = "";
+          this.render();
         };
       }
       container.querySelectorAll(".node-title-input").forEach((input) => {
