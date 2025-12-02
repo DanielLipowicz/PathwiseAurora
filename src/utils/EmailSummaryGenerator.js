@@ -77,6 +77,13 @@ function generateTextSummary(graph, session, exportDate, startNode, endNodeId, e
     const stepNum = index + 1;
     lines.push(`Step ${stepNum}`);
     lines.push(`Node: #${entry.id} – ${entry.title || ''}`);
+    
+    if (entry.selectedChoice && entry.selectedChoice.trim()) {
+      lines.push("Path:');
+      lines.push(`  ${entry.selectedChoice.trim()}`);
+      lines.push('');
+    }
+    
     lines.push('What happened:');
     if (entry.body && entry.body.trim()) {
       lines.push(`  ${entry.body.trim()}`);
@@ -142,6 +149,10 @@ function generateHtmlSummary(graph, session, exportDate, startNode, endNodeId, e
     const stepNum = index + 1;
     parts.push('  <li>');
     parts.push(`    <h3>Step ${stepNum} – #${escapeHtml(String(entry.id))} – ${escapeHtml(entry.title || '')}</h3>`);
+    
+    if (entry.selectedChoice && entry.selectedChoice.trim()) {
+      parts.push(`    <p><strong>Selected path:</strong> ${escapeHtml(entry.selectedChoice.trim())}</p>`);
+    }
     
     if (entry.body && entry.body.trim()) {
       parts.push(`    <p><strong>What happened:</strong><br />`);

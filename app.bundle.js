@@ -331,7 +331,8 @@
           title: entry.title || "",
           body: entry.body || "",
           comment: entry.comment || "",
-          tags: Array.isArray(entry.tags) ? entry.tags : []
+          tags: Array.isArray(entry.tags) ? entry.tags : [],
+          selectedChoice: entry.selectedChoice || null
         }))
       };
     }
@@ -597,10 +598,14 @@
   function isReferenced(nodeId, nodes) {
     return getIncomingReferences(nodeId, nodes).length > 0;
   }
-  function createHistoryEntry(node) {
+  function createHistoryEntry(node, selectedChoice = null) {
     if (!node)
       return null;
-    return { id: node.id, title: node.title, body: node.body, comment: "", tags: [] };
+    const entry = { id: node.id, title: node.title, body: node.body, comment: "", tags: [] };
+    if (selectedChoice) {
+      entry.selectedChoice = selectedChoice;
+    }
+    return entry;
   }
   function migrateHistory(oldHistory, graphData) {
     if (!oldHistory || !Array.isArray(oldHistory))
@@ -672,6 +677,11 @@
       const stepNum = index + 1;
       lines.push(`Step ${stepNum}`);
       lines.push(`Node: #${entry.id} \u2013 ${entry.title || ""}`);
+      if (entry.selectedChoice && entry.selectedChoice.trim()) {
+        lines.push("Selected path:");
+        lines.push(`  ${entry.selectedChoice.trim()}`);
+        lines.push("");
+      }
       lines.push("What happened:");
       if (entry.body && entry.body.trim()) {
         lines.push(`  ${entry.body.trim()}`);
@@ -723,6 +733,9 @@
       const stepNum = index + 1;
       parts.push("  <li>");
       parts.push(`    <h3>Step ${stepNum} \u2013 #${escapeHtml(String(entry.id))} \u2013 ${escapeHtml(entry.title || "")}</h3>`);
+      if (entry.selectedChoice && entry.selectedChoice.trim()) {
+        parts.push(`    <p><strong>Selected path:</strong> ${escapeHtml(entry.selectedChoice.trim())}</p>`);
+      }
       if (entry.body && entry.body.trim()) {
         parts.push(`    <p><strong>What happened:</strong><br />`);
         parts.push(`    ${escapeHtml(entry.body.trim()).replace(/\n/g, "<br />")}</p>`);
@@ -1106,7 +1119,8 @@
                 title: entry.title || "",
                 body: entry.body || "",
                 comment: entry.comment || "",
-                tags: Array.isArray(entry.tags) ? entry.tags : []
+                tags: Array.isArray(entry.tags) ? entry.tags : [],
+                selectedChoice: entry.selectedChoice || null
               }))
             };
           } else {
@@ -1327,8 +1341,12 @@
       this.events.on("navigation:start-requested", (nodeId) => {
         this.startAt(nodeId);
       });
-      this.events.on("navigation:advance-requested", (toId) => {
-        this.advance(toId);
+      this.events.on("navigation:advance-requested", (toIdOrData) => {
+        if (typeof toIdOrData === "object" && toIdOrData !== null) {
+          this.advance(toIdOrData.toId, toIdOrData.choiceLabel);
+        } else {
+          this.advance(toIdOrData);
+        }
       });
       this.events.on("navigation:back-requested", () => {
         this.back();
@@ -1397,8 +1415,9 @@
     /**
      * Advance to a node
      * @param {string|number} toId - Target node ID
+     * @param {string} [choiceLabel] - Label of the selected choice (optional, will be inferred if not provided)
      */
-    advance(toId) {
+    advance(toId, choiceLabel = null) {
       if (!toId || !String(toId).trim()) {
         return;
       }
@@ -1414,15 +1433,27 @@
           title: `#${toId} (missing)`,
           body: "Target node does not exist",
           comment: "",
-          tags: []
+          tags: [],
+          selectedChoice: choiceLabel || null
         });
         this.storage.save(graph.toJSON(), session.toJSON());
         this.url.updateUrl(String(toId));
         this.state.setSession(session);
         return;
       }
+      let selectedChoice = choiceLabel;
+      if (!selectedChoice && session.history.length > 0) {
+        const previousEntry = session.history[session.history.length - 1];
+        const previousNode = byId(previousEntry.id, graph.nodes);
+        if (previousNode && Array.isArray(previousNode.choices)) {
+          const matchingChoice = previousNode.choices.find((c) => String(c.to) === String(toId));
+          if (matchingChoice) {
+            selectedChoice = matchingChoice.label || null;
+          }
+        }
+      }
       session.currentNodeId = toId;
-      session.history.push(createHistoryEntry(node));
+      session.history.push(createHistoryEntry(node, selectedChoice));
       this.storage.save(graph.toJSON(), session.toJSON());
       this.url.updateUrl(toId);
       this.state.setSession(session);
@@ -2527,7 +2558,10 @@
             btn.title = "Target node does not exist";
             btn.classList.add("warn");
           }
-          btn.onclick = () => this.events.emit("navigation:advance-requested", ch.to);
+          btn.onclick = () => this.events.emit("navigation:advance-requested", {
+            toId: ch.to,
+            choiceLabel: ch.label || null
+          });
           area.appendChild(btn);
         }
       }

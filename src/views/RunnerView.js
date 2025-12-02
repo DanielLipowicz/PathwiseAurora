@@ -147,7 +147,10 @@ export class RunnerView {
           btn.title = 'Target node does not exist';
           btn.classList.add('warn');
         }
-        btn.onclick = () => this.events.emit('navigation:advance-requested', ch.to);
+        btn.onclick = () => this.events.emit('navigation:advance-requested', { 
+          toId: ch.to, 
+          choiceLabel: ch.label || null 
+        });
         area.appendChild(btn);
       }
     }

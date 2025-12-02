@@ -21,8 +21,13 @@ export class NavigationController {
       this.startAt(nodeId);
     });
 
-    this.events.on('navigation:advance-requested', (toId) => {
-      this.advance(toId);
+    this.events.on('navigation:advance-requested', (toIdOrData) => {
+      // Support both old format (just toId) and new format ({ toId, choiceLabel })
+      if (typeof toIdOrData === 'object' && toIdOrData !== null) {
+        this.advance(toIdOrData.toId, toIdOrData.choiceLabel);
+      } else {
+        this.advance(toIdOrData);
+      }
     });
 
     this.events.on('navigation:back-requested', () => {
@@ -105,8 +110,9 @@ export class NavigationController {
   /**
    * Advance to a node
    * @param {string|number} toId - Target node ID
+   * @param {string} [choiceLabel] - Label of the selected choice (optional, will be inferred if not provided)
    */
-  advance(toId) {
+  advance(toId, choiceLabel = null) {
     if (!toId || !String(toId).trim()) {
       // Empty reference - cannot navigate
       return;
@@ -126,7 +132,8 @@ export class NavigationController {
         title: `#${toId} (missing)`,
         body: 'Target node does not exist',
         comment: '',
-        tags: []
+        tags: [],
+        selectedChoice: choiceLabel || null
       });
       this.storage.save(graph.toJSON(), session.toJSON());
       this.url.updateUrl(String(toId));
@@ -134,8 +141,21 @@ export class NavigationController {
       return;
     }
 
+    // If choiceLabel not provided, try to infer it from previous node
+    let selectedChoice = choiceLabel;
+    if (!selectedChoice && session.history.length > 0) {
+      const previousEntry = session.history[session.history.length - 1];
+      const previousNode = byId(previousEntry.id, graph.nodes);
+      if (previousNode && Array.isArray(previousNode.choices)) {
+        const matchingChoice = previousNode.choices.find(c => String(c.to) === String(toId));
+        if (matchingChoice) {
+          selectedChoice = matchingChoice.label || null;
+        }
+      }
+    }
+
     session.currentNodeId = toId;
-    session.history.push(createHistoryEntry(node));
+    session.history.push(createHistoryEntry(node, selectedChoice));
     this.storage.save(graph.toJSON(), session.toJSON());
     this.url.updateUrl(toId);
     this.state.setSession(session);

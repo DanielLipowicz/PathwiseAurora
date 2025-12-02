@@ -130,11 +130,16 @@ export function isReferenced(nodeId, nodes) {
 /**
  * Create history entry from node
  * @param {Object} node - Node object
+ * @param {string} [selectedChoice] - Label of the selected choice that led to this node
  * @returns {Object|null} History entry object or null
  */
-export function createHistoryEntry(node) {
+export function createHistoryEntry(node, selectedChoice = null) {
   if (!node) return null;
-  return { id: node.id, title: node.title, body: node.body, comment: '', tags: [] };
+  const entry = { id: node.id, title: node.title, body: node.body, comment: '', tags: [] };
+  if (selectedChoice) {
+    entry.selectedChoice = selectedChoice;
+  }
+  return entry;
 }
 
 /**

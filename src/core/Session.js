@@ -26,7 +26,8 @@ export class Session {
         title: entry.title || '',
         body: entry.body || '',
         comment: entry.comment || '',
-        tags: Array.isArray(entry.tags) ? entry.tags : []
+        tags: Array.isArray(entry.tags) ? entry.tags : [],
+        selectedChoice: entry.selectedChoice || null
       }))
     };
   }
