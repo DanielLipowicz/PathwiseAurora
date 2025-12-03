@@ -1003,3 +1003,24 @@ button.danger { border-color:#6b1f1f; color:#ffd5d5; background:#3a1010; }
   resize: vertical;
 }
 
+/* Node picker in modal */
+#incomingRefNodeList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+#incomingRefNodeList > div {
+  padding: 12px;
+  border: 1px solid #223142;
+  border-radius: 8px;
+  background: #0f1720;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+#incomingRefNodeList > div:hover {
+  border-color: var(--primary);
+  background: #142131;
+}
+

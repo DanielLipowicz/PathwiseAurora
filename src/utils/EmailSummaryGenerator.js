@@ -79,7 +79,7 @@ function generateTextSummary(graph, session, exportDate, startNode, endNodeId, e
     lines.push(`Node: #${entry.id} – ${entry.title || ''}`);
     
     if (entry.selectedChoice && entry.selectedChoice.trim()) {
-      lines.push("Path:');
+      lines.push('Path:');
       lines.push(`  ${entry.selectedChoice.trim()}`);
       lines.push('');
     }

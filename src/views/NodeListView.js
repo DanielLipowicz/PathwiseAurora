@@ -309,9 +309,16 @@ export class NodeListView {
       const incomingRefs = getIncomingReferences(node.id, graph.nodes);
       const hasIncoming = incomingRefs.length > 0;
       
+      // Get both buttons (one in section, one standalone)
+      const btnAddIncomingRefInSection = item.querySelector('.incoming-refs-section .btnAddIncomingRef');
+      const btnAddIncomingRefStandalone = item.querySelector('.btnAddIncomingRefStandalone');
+      
       if (incomingRefsSection && incomingRefsContainer) {
         if (hasIncoming) {
           incomingRefsSection.classList.remove('hidden');
+          if (btnAddIncomingRefStandalone) {
+            btnAddIncomingRefStandalone.classList.add('hidden');
+          }
           incomingRefsContainer.innerHTML = '';
           
           incomingRefs.forEach(ref => {
@@ -320,7 +327,7 @@ export class NodeListView {
             const nodeId = String(ref.node.id);
             const nodeAnchor = `#node-${nodeId}`;
             refItem.innerHTML = `
-              <a href="${nodeAnchor}" class="ref-node-id-link" data-node-id="${escapeHtml(nodeId)}" title="Go to node #${escapeHtml(nodeId)}">#${escapeHtml(nodeId)}</a>
+              <a href="${nodeAnchor}" class="ref-node-id-link" title="Go to node #${escapeHtml(nodeId)}">#${escapeHtml(nodeId)}</a>
               <span class="ref-choice-label">"${escapeHtml(ref.choice.label || '')}"</span>
               <span class="ref-node-title">${escapeHtml(ref.node.title || '')}</span>
             `;
@@ -330,9 +337,13 @@ export class NodeListView {
             if (link) {
               link.onclick = (e) => {
                 e.preventDefault();
-                const targetNodeId = link.dataset.nodeId;
-                if (targetNodeId) {
-                  this.focusOnNode(targetNodeId);
+                // Extract node ID from href (format: #node-{nodeId})
+                const href = link.getAttribute('href');
+                if (href && href.startsWith('#node-')) {
+                  const targetNodeId = href.substring(6); // Remove '#node-' prefix
+                  if (targetNodeId) {
+                    this.focusOnNode(targetNodeId);
+                  }
                 }
               };
             }
@@ -341,8 +352,22 @@ export class NodeListView {
           });
         } else {
           incomingRefsSection.classList.add('hidden');
+          if (btnAddIncomingRefStandalone) {
+            btnAddIncomingRefStandalone.classList.remove('hidden');
+          }
         }
       }
+
+      // Setup "Add incoming reference" button handlers
+      const setupAddIncomingRefButton = (btn) => {
+        if (btn) {
+          btn.onclick = () => {
+            this.showAddIncomingRefModal(node.id);
+          };
+        }
+      };
+      setupAddIncomingRefButton(btnAddIncomingRefInSection);
+      setupAddIncomingRefButton(btnAddIncomingRefStandalone);
 
       item.querySelector('.btnAddChoice').onclick = () => {
         const firstNodeId = graph.nodes[0]?.id ?? '1';
@@ -456,6 +481,141 @@ export class NodeListView {
         return;
       }
     }
+  }
+
+  /**
+   * Show modal for adding incoming reference
+   * @param {string|number} targetNodeId - ID of the node that should receive the incoming reference
+   */
+  showAddIncomingRefModal(targetNodeId) {
+    const modal = document.getElementById('addIncomingRefModal');
+    const filterInput = document.getElementById('incomingRefFilter');
+    const nodeList = document.getElementById('incomingRefNodeList');
+    const closeBtn = document.getElementById('btnCloseAddIncomingRef');
+    
+    if (!modal || !filterInput || !nodeList || !closeBtn) return;
+
+    const graph = this.state.getGraph();
+    if (!graph) return;
+
+    const targetIdStr = String(targetNodeId);
+
+    // Filter out the target node itself (can't reference itself)
+    const availableNodes = graph.nodes
+      .filter(n => String(n.id) !== targetIdStr)
+      .sort((a, b) => compareIds(a.id, b.id));
+
+    // Render node list
+    const renderNodeList = (filterQuery = '') => {
+      nodeList.innerHTML = '';
+      const q = filterQuery.toLowerCase();
+      const filteredNodes = availableNodes.filter(n => 
+        !q || String(n.id).includes(q) || n.title.toLowerCase().includes(q)
+      );
+
+      if (filteredNodes.length === 0) {
+        const emptyMsg = document.createElement('div');
+        emptyMsg.className = 'muted';
+        emptyMsg.style.padding = '20px';
+        emptyMsg.style.textAlign = 'center';
+        emptyMsg.textContent = 'No nodes found';
+        nodeList.appendChild(emptyMsg);
+        return;
+      }
+
+      filteredNodes.forEach(node => {
+        const nodeItem = document.createElement('div');
+        nodeItem.style.cssText = 'padding: 12px; border: 1px solid #223142; border-radius: 8px; background: #0f1720; cursor: pointer; transition: all 0.15s ease;';
+        nodeItem.innerHTML = `
+          <div style="font-weight: 600; color: #d8e9ff; margin-bottom: 4px;">#${escapeHtml(String(node.id))}</div>
+          <div style="font-size: 13px; color: var(--text);">${escapeHtml(node.title || '')}</div>
+        `;
+        
+        nodeItem.onmouseenter = () => {
+          nodeItem.style.borderColor = 'var(--primary)';
+          nodeItem.style.background = '#142131';
+        };
+        nodeItem.onmouseleave = () => {
+          nodeItem.style.borderColor = '#223142';
+          nodeItem.style.background = '#0f1720';
+        };
+        
+        nodeItem.onclick = () => {
+          this.addIncomingReference(targetNodeId, node.id);
+          modal.classList.add('hidden');
+          filterInput.value = '';
+        };
+        
+        nodeList.appendChild(nodeItem);
+      });
+    };
+
+    // Setup filter input
+    filterInput.value = '';
+    filterInput.oninput = () => {
+      renderNodeList(filterInput.value);
+    };
+
+    // Setup close button
+    closeBtn.onclick = () => {
+      modal.classList.add('hidden');
+      filterInput.value = '';
+    };
+
+    // Close on modal background click
+    modal.onclick = (e) => {
+      if (e.target === modal) {
+        modal.classList.add('hidden');
+        filterInput.value = '';
+      }
+    };
+
+    // Initial render
+    renderNodeList();
+    
+    // Show modal
+    modal.classList.remove('hidden');
+    filterInput.focus();
+  }
+
+  /**
+   * Add incoming reference by creating a choice in source node pointing to target node
+   * @param {string|number} targetNodeId - ID of the node that should receive the incoming reference (Node A)
+   * @param {string|number} sourceNodeId - ID of the node that should have the choice (Node B)
+   */
+  addIncomingReference(targetNodeId, sourceNodeId) {
+    const graph = this.state.getGraph();
+    if (!graph) return;
+
+    const sourceNode = graph.nodes.find(n => String(n.id) === String(sourceNodeId));
+    if (!sourceNode) return;
+
+    const targetIdStr = String(targetNodeId);
+
+    // Check if choice already exists
+    const existingChoice = sourceNode.choices.find(c => String(c.to) === targetIdStr);
+    if (existingChoice) {
+      // Choice already exists, just notify and focus on the source node
+      this.events.emit('node:updated', sourceNode);
+      this.focusOnNode(sourceNodeId);
+      return;
+    }
+
+    // Add new choice with empty label pointing to target node
+    sourceNode.choices.push({
+      label: '',
+      to: targetIdStr
+    });
+
+    // Emit events
+    this.events.emit('node:updated', sourceNode);
+    this.events.emit('choice:added', { node: sourceNode });
+    this.events.emit('graph:changed');
+    
+    // Focus on the source node so user can see the new choice
+    setTimeout(() => {
+      this.focusOnNode(sourceNodeId);
+    }, 100);
   }
 }
 

@@ -678,7 +678,7 @@
       lines.push(`Step ${stepNum}`);
       lines.push(`Node: #${entry.id} \u2013 ${entry.title || ""}`);
       if (entry.selectedChoice && entry.selectedChoice.trim()) {
-        lines.push("Selected path:");
+        lines.push("Path:");
         lines.push(`  ${entry.selectedChoice.trim()}`);
         lines.push("");
       }
@@ -1787,9 +1787,14 @@
         warnEmpty.classList.toggle("hidden", !empty);
         const incomingRefs = getIncomingReferences(node.id, graph.nodes);
         const hasIncoming = incomingRefs.length > 0;
+        const btnAddIncomingRefInSection = item.querySelector(".incoming-refs-section .btnAddIncomingRef");
+        const btnAddIncomingRefStandalone = item.querySelector(".btnAddIncomingRefStandalone");
         if (incomingRefsSection && incomingRefsContainer) {
           if (hasIncoming) {
             incomingRefsSection.classList.remove("hidden");
+            if (btnAddIncomingRefStandalone) {
+              btnAddIncomingRefStandalone.classList.add("hidden");
+            }
             incomingRefsContainer.innerHTML = "";
             incomingRefs.forEach((ref) => {
               const refItem = document.createElement("div");
@@ -1797,7 +1802,7 @@
               const nodeId = String(ref.node.id);
               const nodeAnchor = `#node-${nodeId}`;
               refItem.innerHTML = `
-              <a href="${nodeAnchor}" class="ref-node-id-link" data-node-id="${escapeHtml2(nodeId)}" title="Go to node #${escapeHtml2(nodeId)}">#${escapeHtml2(nodeId)}</a>
+              <a href="${nodeAnchor}" class="ref-node-id-link" title="Go to node #${escapeHtml2(nodeId)}">#${escapeHtml2(nodeId)}</a>
               <span class="ref-choice-label">"${escapeHtml2(ref.choice.label || "")}"</span>
               <span class="ref-node-title">${escapeHtml2(ref.node.title || "")}</span>
             `;
@@ -1805,9 +1810,12 @@
               if (link) {
                 link.onclick = (e) => {
                   e.preventDefault();
-                  const targetNodeId = link.dataset.nodeId;
-                  if (targetNodeId) {
-                    this.focusOnNode(targetNodeId);
+                  const href = link.getAttribute("href");
+                  if (href && href.startsWith("#node-")) {
+                    const targetNodeId = href.substring(6);
+                    if (targetNodeId) {
+                      this.focusOnNode(targetNodeId);
+                    }
                   }
                 };
               }
@@ -1815,8 +1823,20 @@
             });
           } else {
             incomingRefsSection.classList.add("hidden");
+            if (btnAddIncomingRefStandalone) {
+              btnAddIncomingRefStandalone.classList.remove("hidden");
+            }
           }
         }
+        const setupAddIncomingRefButton = (btn) => {
+          if (btn) {
+            btn.onclick = () => {
+              this.showAddIncomingRefModal(node.id);
+            };
+          }
+        };
+        setupAddIncomingRefButton(btnAddIncomingRefInSection);
+        setupAddIncomingRefButton(btnAddIncomingRefStandalone);
         item.querySelector(".btnAddChoice").onclick = () => {
           const firstNodeId = graph.nodes[0]?.id ?? "1";
           node.choices.push({ label: "", to: String(firstNodeId) });
@@ -1910,6 +1930,108 @@
           return;
         }
       }
+    }
+    /**
+     * Show modal for adding incoming reference
+     * @param {string|number} targetNodeId - ID of the node that should receive the incoming reference
+     */
+    showAddIncomingRefModal(targetNodeId) {
+      const modal = document.getElementById("addIncomingRefModal");
+      const filterInput = document.getElementById("incomingRefFilter");
+      const nodeList = document.getElementById("incomingRefNodeList");
+      const closeBtn = document.getElementById("btnCloseAddIncomingRef");
+      if (!modal || !filterInput || !nodeList || !closeBtn)
+        return;
+      const graph = this.state.getGraph();
+      if (!graph)
+        return;
+      const targetIdStr = String(targetNodeId);
+      const availableNodes = graph.nodes.filter((n) => String(n.id) !== targetIdStr).sort((a, b) => compareIds(a.id, b.id));
+      const renderNodeList = (filterQuery = "") => {
+        nodeList.innerHTML = "";
+        const q = filterQuery.toLowerCase();
+        const filteredNodes = availableNodes.filter(
+          (n) => !q || String(n.id).includes(q) || n.title.toLowerCase().includes(q)
+        );
+        if (filteredNodes.length === 0) {
+          const emptyMsg = document.createElement("div");
+          emptyMsg.className = "muted";
+          emptyMsg.style.padding = "20px";
+          emptyMsg.style.textAlign = "center";
+          emptyMsg.textContent = "No nodes found";
+          nodeList.appendChild(emptyMsg);
+          return;
+        }
+        filteredNodes.forEach((node) => {
+          const nodeItem = document.createElement("div");
+          nodeItem.style.cssText = "padding: 12px; border: 1px solid #223142; border-radius: 8px; background: #0f1720; cursor: pointer; transition: all 0.15s ease;";
+          nodeItem.innerHTML = `
+          <div style="font-weight: 600; color: #d8e9ff; margin-bottom: 4px;">#${escapeHtml2(String(node.id))}</div>
+          <div style="font-size: 13px; color: var(--text);">${escapeHtml2(node.title || "")}</div>
+        `;
+          nodeItem.onmouseenter = () => {
+            nodeItem.style.borderColor = "var(--primary)";
+            nodeItem.style.background = "#142131";
+          };
+          nodeItem.onmouseleave = () => {
+            nodeItem.style.borderColor = "#223142";
+            nodeItem.style.background = "#0f1720";
+          };
+          nodeItem.onclick = () => {
+            this.addIncomingReference(targetNodeId, node.id);
+            modal.classList.add("hidden");
+            filterInput.value = "";
+          };
+          nodeList.appendChild(nodeItem);
+        });
+      };
+      filterInput.value = "";
+      filterInput.oninput = () => {
+        renderNodeList(filterInput.value);
+      };
+      closeBtn.onclick = () => {
+        modal.classList.add("hidden");
+        filterInput.value = "";
+      };
+      modal.onclick = (e) => {
+        if (e.target === modal) {
+          modal.classList.add("hidden");
+          filterInput.value = "";
+        }
+      };
+      renderNodeList();
+      modal.classList.remove("hidden");
+      filterInput.focus();
+    }
+    /**
+     * Add incoming reference by creating a choice in source node pointing to target node
+     * @param {string|number} targetNodeId - ID of the node that should receive the incoming reference (Node A)
+     * @param {string|number} sourceNodeId - ID of the node that should have the choice (Node B)
+     */
+    addIncomingReference(targetNodeId, sourceNodeId) {
+      const graph = this.state.getGraph();
+      if (!graph)
+        return;
+      const sourceNode = graph.nodes.find((n) => String(n.id) === String(sourceNodeId));
+      if (!sourceNode)
+        return;
+      const targetIdStr = String(targetNodeId);
+      const existingChoice = sourceNode.choices.find((c) => String(c.to) === targetIdStr);
+      if (existingChoice) {
+        this.events.emit("node:updated", sourceNode);
+        this.focusOnNode(sourceNodeId);
+        return;
+      }
+      sourceNode.choices.push({
+        label: "",
+        to: targetIdStr
+      });
+      this.events.emit("node:updated", sourceNode);
+      this.events.emit("choice:added", { node: sourceNode });
+      this.events.emit("graph:changed");
+      setTimeout(() => {
+        this.focusOnNode(sourceNodeId);
+      }, 100);
     }
   };
 
@@ -2102,9 +2224,12 @@
               </div>
             </div>
             
-            ${hasIncoming ? `
             <div class="node-field">
-              <label>Incoming References (${incomingRefs.length})</label>
+              <div class="node-field-header">
+                <label>Incoming References ${hasIncoming ? `(${incomingRefs.length})` : ""}</label>
+                <button class="btn-add-incoming-ref" data-node-id="${escapeHtml2(String(node.id))}" style="font-size:11px; padding:4px 8px;">Add incoming reference</button>
+              </div>
+              ${hasIncoming ? `
               <div class="incoming-refs">
       ` : ""}
       
@@ -2113,7 +2238,7 @@
           const nodeAnchor = `#node-${nodeId}`;
           return `
                 <div class="incoming-ref-item">
-                  <a href="${nodeAnchor}" class="ref-node-id-link" data-node-id="${escapeHtml2(nodeId)}" title="Go to node #${escapeHtml2(nodeId)}">#${escapeHtml2(nodeId)}</a>
+                  <a href="${nodeAnchor}" class="ref-node-id-link" title="Go to node #${escapeHtml2(nodeId)}">#${escapeHtml2(nodeId)}</a>
                   <span class="ref-choice-label">"${escapeHtml2(ref.choice.label || "")}"</span>
                   <span class="ref-node-title">${escapeHtml2(ref.node.title || "")}</span>
                 </div>
@@ -2122,8 +2247,8 @@
       
       ${hasIncoming ? `
               </div>
-            </div>
       ` : ""}
+            </div>
           </div>
         </div>
       `;
@@ -2413,9 +2538,20 @@
       container.querySelectorAll(".ref-node-id-link").forEach((link) => {
         link.onclick = (e) => {
           e.preventDefault();
-          const nodeId = link.dataset.nodeId;
+          const href = link.getAttribute("href");
+          if (href && href.startsWith("#node-")) {
+            const nodeId = href.substring(6);
+            if (nodeId) {
+              this.focusOnNode(nodeId);
+            }
+          }
+        };
+      });
+      container.querySelectorAll(".btn-add-incoming-ref").forEach((btn) => {
+        btn.onclick = () => {
+          const nodeId = btn.dataset.nodeId;
           if (nodeId) {
-            this.focusOnNode(nodeId);
+            this.showAddIncomingRefModal(nodeId);
           }
         };
       });
@@ -2440,6 +2576,108 @@
           titleInput.select();
         }
       }, 300);
+    }
+    /**
+     * Show modal for adding incoming reference
+     * @param {string|number} targetNodeId - ID of the node that should receive the incoming reference
+     */
+    showAddIncomingRefModal(targetNodeId) {
+      const modal = document.getElementById("addIncomingRefModal");
+      const filterInput = document.getElementById("incomingRefFilter");
+      const nodeList = document.getElementById("incomingRefNodeList");
+      const closeBtn = document.getElementById("btnCloseAddIncomingRef");
+      if (!modal || !filterInput || !nodeList || !closeBtn)
+        return;
+      const graph = this.state.getGraph();
+      if (!graph)
+        return;
+      const targetIdStr = String(targetNodeId);
+      const availableNodes = graph.nodes.filter((n) => String(n.id) !== targetIdStr).sort((a, b) => compareIds(a.id, b.id));
+      const renderNodeList = (filterQuery = "") => {
+        nodeList.innerHTML = "";
+        const q = filterQuery.toLowerCase();
+        const filteredNodes = availableNodes.filter(
+          (n) => !q || String(n.id).includes(q) || n.title.toLowerCase().includes(q)
+        );
+        if (filteredNodes.length === 0) {
+          const emptyMsg = document.createElement("div");
+          emptyMsg.className = "muted";
+          emptyMsg.style.padding = "20px";
+          emptyMsg.style.textAlign = "center";
+          emptyMsg.textContent = "No nodes found";
+          nodeList.appendChild(emptyMsg);
+          return;
+        }
+        filteredNodes.forEach((node) => {
+          const nodeItem = document.createElement("div");
+          nodeItem.style.cssText = "padding: 12px; border: 1px solid #223142; border-radius: 8px; background: #0f1720; cursor: pointer; transition: all 0.15s ease;";
+          nodeItem.innerHTML = `
+          <div style="font-weight: 600; color: #d8e9ff; margin-bottom: 4px;">#${escapeHtml2(String(node.id))}</div>
+          <div style="font-size: 13px; color: var(--text);">${escapeHtml2(node.title || "")}</div>
+        `;
+          nodeItem.onmouseenter = () => {
+            nodeItem.style.borderColor = "var(--primary)";
+            nodeItem.style.background = "#142131";
+          };
+          nodeItem.onmouseleave = () => {
+            nodeItem.style.borderColor = "#223142";
+            nodeItem.style.background = "#0f1720";
+          };
+          nodeItem.onclick = () => {
+            this.addIncomingReference(targetNodeId, node.id);
+            modal.classList.add("hidden");
+            filterInput.value = "";
+          };
+          nodeList.appendChild(nodeItem);
+        });
+      };
+      filterInput.value = "";
+      filterInput.oninput = () => {
+        renderNodeList(filterInput.value);
+      };
+      closeBtn.onclick = () => {
+        modal.classList.add("hidden");
+        filterInput.value = "";
+      };
+      modal.onclick = (e) => {
+        if (e.target === modal) {
+          modal.classList.add("hidden");
+          filterInput.value = "";
+        }
+      };
+      renderNodeList();
+      modal.classList.remove("hidden");
+      filterInput.focus();
+    }
+    /**
+     * Add incoming reference by creating a choice in source node pointing to target node
+     * @param {string|number} targetNodeId - ID of the node that should receive the incoming reference (Node A)
+     * @param {string|number} sourceNodeId - ID of the node that should have the choice (Node B)
+     */
+    addIncomingReference(targetNodeId, sourceNodeId) {
+      const graph = this.state.getGraph();
+      if (!graph)
+        return;
+      const sourceNode = graph.nodes.find((n) => String(n.id) === String(sourceNodeId));
+      if (!sourceNode)
+        return;
+      const targetIdStr = String(targetNodeId);
+      const existingChoice = sourceNode.choices.find((c) => String(c.to) === targetIdStr);
+      if (existingChoice) {
+        this.events.emit("node:updated", sourceNode);
+        this.focusOnNode(sourceNodeId);
+        return;
+      }
+      sourceNode.choices.push({
+        label: "",
+        to: targetIdStr
+      });
+      this.events.emit("node:updated", sourceNode);
+      this.events.emit("choice:added", { node: sourceNode });
+      this.events.emit("graph:changed");
+      setTimeout(() => {
+        this.focusOnNode(sourceNodeId);
+      }, 100);
     }
   };
 
