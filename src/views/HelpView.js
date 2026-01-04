@@ -10,95 +10,6 @@ export class HelpView {
     this.state = stateManager;
     this.events = eventBus;
     this.dom = domRegistry;
-    this.activeTab = 'guide';
-  }
-
-  /**
-   * Generate release notes HTML
-   */
-  generateReleaseNotes() {
-    return `
-      <div class="help-content">
-        <section class="help-section">
-          <h2>Release Notes</h2>
-          <p>History of changes and improvements to PathwiseAurora.</p>
-        </section>
-
-        <section class="help-section">
-          <h3>2026-01-04</h3>
-          <ul>
-            <li>Added link list for nodes for quick navigation</li>
-            <li>Added Task Clarification framework</li>
-          </ul>
-        </section>
-
-        <section class="help-section">
-          <h3>2025-12-03</h3>
-          <ul>
-            <li>Added incoming reference creation from Node View</li>
-          </ul>
-        </section>
-
-        <section class="help-section">
-          <h3>2025-12-02</h3>
-          <ul>
-            <li>Added selected path tracking to email summary</li>
-          </ul>
-        </section>
-
-        <section class="help-section">
-          <h3>2025-11-30</h3>
-          <ul>
-            <li>Added Confluence export functionality</li>
-            <li>Added navigation links to nodes in Nodes View and Node List View</li>
-            <li>Improved input fields to expand to content height on focus</li>
-            <li>Added search and filter functionality to NODES page</li>
-            <li>Updated readme file</li>
-          </ul>
-        </section>
-
-        <section class="help-section">
-          <h3>2025-11-27</h3>
-          <ul>
-            <li>Added auto-focus and navigation for newly created child nodes</li>
-          </ul>
-        </section>
-
-        <section class="help-section">
-          <h3>2025-11-24</h3>
-          <ul>
-            <li>Added comprehensive help page with user guide</li>
-            <li>Added email summary generator for session exports</li>
-            <li>Added Knowledge Gaps page for quality assurance and content review</li>
-            <li>Added tags/notes support to history entries</li>
-            <li>Modularized codebase with build system and UI enhancements</li>
-          </ul>
-        </section>
-
-        <section class="help-section">
-          <h3>2025-11-22</h3>
-          <ul>
-            <li>Added new session button</li>
-          </ul>
-        </section>
-
-        <section class="help-section">
-          <h3>2025-11-21</h3>
-          <ul>
-            <li>Initial release: Added PathwiseAurora - interactive decision flow and playbook editor</li>
-            <li>Initial commit</li>
-          </ul>
-        </section>
-      </div>
-    `;
-  }
-
-  /**
-   * Handle tab switching
-   */
-  switchTab(tabName) {
-    this.activeTab = tabName;
-    this.render();
   }
 
   /**
@@ -114,17 +25,11 @@ export class HelpView {
     const html = `
       <div class="help-page">
         <div class="help-header">
-          <h1>PathwiseAurora</h1>
-          <p class="help-subtitle">Interactive decision flow and playbook editor</p>
+          <h1>PathwiseAurora User Guide</h1>
+          <p class="help-subtitle">Step-by-step guide to using the problem-solving tool</p>
         </div>
 
-        <div class="help-tabs">
-          <button class="help-tab ${this.activeTab === 'guide' ? 'active' : ''}" data-tab="guide">User Guide</button>
-          <button class="help-tab ${this.activeTab === 'releases' ? 'active' : ''}" data-tab="releases">Release Notes</button>
-        </div>
-
-        <div class="help-tab-content ${this.activeTab === 'guide' ? 'active' : ''}" data-content="guide">
-          <div class="help-content">
+        <div class="help-content">
           <!-- Introduction -->
           <section class="help-section">
             <h2>1. Introduction</h2>
@@ -504,24 +409,10 @@ export class HelpView {
               <li>Use the <strong>Tiles</strong> view to see a visualization of connections between nodes</li>
             </ul>
           </section>
-          </div>
-        </div>
-
-        <div class="help-tab-content ${this.activeTab === 'releases' ? 'active' : ''}" data-content="releases">
-          ${this.generateReleaseNotes()}
         </div>
       </div>
     `;
 
     container.innerHTML = html;
-
-    // Add event listeners for tab switching
-    const tabs = container.querySelectorAll('.help-tab');
-    tabs.forEach(tab => {
-      tab.addEventListener('click', () => {
-        const tabName = tab.getAttribute('data-tab');
-        this.switchTab(tabName);
-      });
-    });
   }
 }

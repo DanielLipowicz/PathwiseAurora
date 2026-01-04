@@ -106,10 +106,14 @@
         nodesPageContainer: document.getElementById("nodesPageContainer"),
         knowledgeGapsContainer: document.getElementById("knowledgeGapsContainer"),
         helpContainer: document.getElementById("helpContainer"),
+        releaseNotesContainer: document.getElementById("releaseNotesContainer"),
         btnNavMain: document.getElementById("btnNavMain"),
         btnNavNodes: document.getElementById("btnNavNodes"),
         btnNavGaps: document.getElementById("btnNavGaps"),
+        btnNavMore: document.getElementById("btnNavMore"),
+        navMoreMenu: document.getElementById("navMoreMenu"),
         btnNavHelp: document.getElementById("btnNavHelp"),
+        btnNavReleaseNotes: document.getElementById("btnNavReleaseNotes"),
         emailSummaryModal: document.getElementById("emailSummaryModal"),
         emailSummaryFormat: document.getElementById("emailSummaryFormat"),
         emailSummaryText: document.getElementById("emailSummaryText"),
@@ -3710,93 +3714,6 @@
       this.state = stateManager;
       this.events = eventBus;
       this.dom = domRegistry;
-      this.activeTab = "guide";
-    }
-    /**
-     * Generate release notes HTML
-     */
-    generateReleaseNotes() {
-      return `
-      <div class="help-content">
-        <section class="help-section">
-          <h2>Release Notes</h2>
-          <p>History of changes and improvements to PathwiseAurora.</p>
-        </section>
-
-        <section class="help-section">
-          <h3>2026-01-04</h3>
-          <ul>
-            <li>Added link list for nodes for quick navigation</li>
-            <li>Added Task Clarification framework</li>
-          </ul>
-        </section>
-
-        <section class="help-section">
-          <h3>2025-12-03</h3>
-          <ul>
-            <li>Added incoming reference creation from Node View</li>
-          </ul>
-        </section>
-
-        <section class="help-section">
-          <h3>2025-12-02</h3>
-          <ul>
-            <li>Added selected path tracking to email summary</li>
-          </ul>
-        </section>
-
-        <section class="help-section">
-          <h3>2025-11-30</h3>
-          <ul>
-            <li>Added Confluence export functionality</li>
-            <li>Added navigation links to nodes in Nodes View and Node List View</li>
-            <li>Improved input fields to expand to content height on focus</li>
-            <li>Added search and filter functionality to NODES page</li>
-            <li>Updated readme file</li>
-          </ul>
-        </section>
-
-        <section class="help-section">
-          <h3>2025-11-27</h3>
-          <ul>
-            <li>Added auto-focus and navigation for newly created child nodes</li>
-          </ul>
-        </section>
-
-        <section class="help-section">
-          <h3>2025-11-24</h3>
-          <ul>
-            <li>Added comprehensive help page with user guide</li>
-            <li>Added email summary generator for session exports</li>
-            <li>Added Knowledge Gaps page for quality assurance and content review</li>
-            <li>Added tags/notes support to history entries</li>
-            <li>Modularized codebase with build system and UI enhancements</li>
-          </ul>
-        </section>
-
-        <section class="help-section">
-          <h3>2025-11-22</h3>
-          <ul>
-            <li>Added new session button</li>
-          </ul>
-        </section>
-
-        <section class="help-section">
-          <h3>2025-11-21</h3>
-          <ul>
-            <li>Initial release: Added PathwiseAurora - interactive decision flow and playbook editor</li>
-            <li>Initial commit</li>
-          </ul>
-        </section>
-      </div>
-    `;
-    }
-    /**
-     * Handle tab switching
-     */
-    switchTab(tabName) {
-      this.activeTab = tabName;
-      this.render();
     }
     /**
      * Render the help page
@@ -3810,17 +3727,11 @@
       const html = `
       <div class="help-page">
         <div class="help-header">
-          <h1>PathwiseAurora</h1>
-          <p class="help-subtitle">Interactive decision flow and playbook editor</p>
+          <h1>PathwiseAurora User Guide</h1>
+          <p class="help-subtitle">Step-by-step guide to using the problem-solving tool</p>
         </div>
 
-        <div class="help-tabs">
-          <button class="help-tab ${this.activeTab === "guide" ? "active" : ""}" data-tab="guide">User Guide</button>
-          <button class="help-tab ${this.activeTab === "releases" ? "active" : ""}" data-tab="releases">Release Notes</button>
-        </div>
-
-        <div class="help-tab-content ${this.activeTab === "guide" ? "active" : ""}" data-content="guide">
-          <div class="help-content">
+        <div class="help-content">
           <!-- Introduction -->
           <section class="help-section">
             <h2>1. Introduction</h2>
@@ -4200,22 +4111,110 @@
               <li>Use the <strong>Tiles</strong> view to see a visualization of connections between nodes</li>
             </ul>
           </section>
-          </div>
-        </div>
-
-        <div class="help-tab-content ${this.activeTab === "releases" ? "active" : ""}" data-content="releases">
-          ${this.generateReleaseNotes()}
         </div>
       </div>
     `;
       container.innerHTML = html;
-      const tabs = container.querySelectorAll(".help-tab");
-      tabs.forEach((tab) => {
-        tab.addEventListener("click", () => {
-          const tabName = tab.getAttribute("data-tab");
-          this.switchTab(tabName);
-        });
-      });
+    }
+  };
+
+  // src/views/ReleaseNotesView.js
+  var ReleaseNotesView = class {
+    constructor(stateManager, eventBus, domRegistry) {
+      this.state = stateManager;
+      this.events = eventBus;
+      this.dom = domRegistry;
+    }
+    /**
+     * Render the release notes page
+     */
+    render() {
+      const container = this.dom.get("releaseNotesContainer");
+      if (!container) {
+        console.warn("ReleaseNotesView: Container not found");
+        return;
+      }
+      const html = `
+      <div class="help-page">
+        <div class="help-header">
+          <h1>Release Notes</h1>
+          <p class="help-subtitle">History of changes and improvements to PathwiseAurora</p>
+        </div>
+
+        <div class="help-content">
+          <section class="help-section">
+            <h3>2026-01-04</h3>
+            <ul>
+              <li>Added success button style</li>
+              <li>Separated Help and Release Notes into independent pages</li>
+              <li>Added "More" dropdown menu to navigation bar</li>
+              <li>Moved Help and Release Notes under "More" dropdown menu</li>
+              <li>Added link list for nodes for quick navigation</li>
+              <li>Added Task Clarification framework</li>
+            </ul>
+          </section>
+
+          <section class="help-section">
+            <h3>2025-12-03</h3>
+            <ul>
+              <li>Added incoming reference creation from Node View</li>
+            </ul>
+          </section>
+
+          <section class="help-section">
+            <h3>2025-12-02</h3>
+            <ul>
+              <li>Added selected path tracking to email summary</li>
+            </ul>
+          </section>
+
+          <section class="help-section">
+            <h3>2025-11-30</h3>
+            <ul>
+              <li>Added Confluence export functionality</li>
+              <li>Added navigation links to nodes in Nodes View and Node List View</li>
+              <li>Improved input fields to expand to content height on focus</li>
+              <li>Added search and filter functionality to NODES page</li>
+              <li>Updated readme file</li>
+            </ul>
+          </section>
+
+          <section class="help-section">
+            <h3>2025-11-27</h3>
+            <ul>
+              <li>Added auto-focus and navigation for newly created child nodes</li>
+            </ul>
+          </section>
+
+          <section class="help-section">
+            <h3>2025-11-24</h3>
+            <ul>
+              <li>Added comprehensive help page with user guide</li>
+              <li>Added email summary generator for session exports</li>
+              <li>Added Knowledge Gaps page for quality assurance and content review</li>
+              <li>Added tags/notes support to history entries</li>
+              <li>Modularized codebase with build system and UI enhancements</li>
+            </ul>
+          </section>
+
+          <section class="help-section">
+            <h3>2025-11-22</h3>
+            <ul>
+              <li>Added new session button</li>
+            </ul>
+          </section>
+
+          <section class="help-section">
+            <h3>2025-11-21</h3>
+            <ul>
+              <li>Initial release: Added PathwiseAurora - interactive decision flow and playbook editor</li>
+              <li>Initial commit</li>
+            </ul>
+          </section>
+        </div>
+      </div>
+    `;
+      container.innerHTML = html;
     }
   };
 
@@ -4241,6 +4240,7 @@
       this.errorsView = new ErrorsView(this.validation, this.eventBus, this.dom);
       this.knowledgeGapsView = new KnowledgeGapsView(this.state, this.eventBus, this.dom);
       this.helpView = new HelpView(this.state, this.eventBus, this.dom);
+      this.releaseNotesView = new ReleaseNotesView(this.state, this.eventBus, this.dom);
       this.tilesView.setViewManager(this.viewManager);
       this.currentPage = "main";
       this.setupEventListeners();
@@ -4467,9 +4467,33 @@
           this.switchToPage("gaps");
         };
       }
+      if (els.btnNavMore && els.navMoreMenu) {
+        els.btnNavMore.onclick = (e) => {
+          e.stopPropagation();
+          const isHidden = els.navMoreMenu.classList.contains("hidden");
+          this.closeMoreMenu();
+          if (isHidden) {
+            els.navMoreMenu.classList.remove("hidden");
+          }
+        };
+      }
+      document.addEventListener("click", (e) => {
+        if (els.navMoreMenu && els.btnNavMore) {
+          if (!els.navMoreMenu.contains(e.target) && !els.btnNavMore.contains(e.target)) {
+            this.closeMoreMenu();
+          }
+        }
+      });
       if (els.btnNavHelp) {
         els.btnNavHelp.onclick = () => {
+          this.closeMoreMenu();
           this.switchToPage("help");
+        };
+      }
+      if (els.btnNavReleaseNotes) {
+        els.btnNavReleaseNotes.onclick = () => {
+          this.closeMoreMenu();
+          this.switchToPage("releaseNotes");
         };
       }
       this.eventBus.on("gaps:goto-node", ({ nodeId, choiceIndex }) => {
@@ -4501,18 +4525,29 @@
       });
     }
     /**
-     * Switch between main view, nodes page, gaps page, and help page
-     * @param {string} page - Page name ('main', 'nodes', 'gaps', or 'help')
+     * Close the More dropdown menu
+     */
+    closeMoreMenu() {
+      const navMoreMenu = this.dom.get("navMoreMenu");
+      if (navMoreMenu) {
+        navMoreMenu.classList.add("hidden");
+      }
+    }
+    /**
+     * Switch between main view, nodes page, gaps page, help page, and release notes page
+     * @param {string} page - Page name ('main', 'nodes', 'gaps', 'help', or 'releaseNotes')
      */
     switchToPage(page) {
       const mainView = this.dom.get("mainView");
       const nodesPageContainer = this.dom.get("nodesPageContainer");
       const knowledgeGapsContainer = this.dom.get("knowledgeGapsContainer");
       const helpContainer = this.dom.get("helpContainer");
+      const releaseNotesContainer = this.dom.get("releaseNotesContainer");
       const btnNavMain = this.dom.get("btnNavMain");
       const btnNavNodes = this.dom.get("btnNavNodes");
       const btnNavGaps = this.dom.get("btnNavGaps");
       const btnNavHelp = this.dom.get("btnNavHelp");
+      const btnNavReleaseNotes = this.dom.get("btnNavReleaseNotes");
       if (mainView)
         mainView.classList.add("hidden");
       if (nodesPageContainer)
@@ -4521,6 +4556,8 @@
         knowledgeGapsContainer.classList.add("hidden");
       if (helpContainer)
         helpContainer.classList.add("hidden");
+      if (releaseNotesContainer)
+        releaseNotesContainer.classList.add("hidden");
       if (btnNavMain)
         btnNavMain.classList.remove("active");
       if (btnNavNodes)
@@ -4529,6 +4566,8 @@
         btnNavGaps.classList.remove("active");
       if (btnNavHelp)
         btnNavHelp.classList.remove("active");
+      if (btnNavReleaseNotes)
+        btnNavReleaseNotes.classList.remove("active");
       if (page === "nodes") {
         this.currentPage = "nodes";
         if (nodesPageContainer)
@@ -4550,6 +4589,13 @@
         if (btnNavHelp)
           btnNavHelp.classList.add("active");
         this.helpView.render();
+      } else if (page === "releaseNotes") {
+        this.currentPage = "releaseNotes";
+        if (releaseNotesContainer)
+          releaseNotesContainer.classList.remove("hidden");
+        if (btnNavReleaseNotes)
+          btnNavReleaseNotes.classList.add("active");
+        this.releaseNotesView.render();
       } else {
         this.currentPage = "main";
         if (mainView)

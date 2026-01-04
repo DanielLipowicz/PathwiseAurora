@@ -71,5 +71,17 @@ Instead of scattered knowledge in people's heads, Slack threads, or static docs,
   - Dead ends (nodes without choices that aren't referenced)
   - Empty titles, descriptions, or choice labels
 - **Comprehensive help page** – built-in user guide with step-by-step instructions, button descriptions, keyboard shortcuts, and best practices.
-- **Multiple navigation pages** – switch between Main view, dedicated Nodes management page, Knowledge Gaps analysis, and Help documentation.
+- **Release Notes page** – dedicated page displaying the history of changes and improvements to PathwiseAurora.
+- **Multiple navigation pages** – switch between Main view, dedicated Nodes management page, Knowledge Gaps analysis, Help documentation, and Release Notes.
+
+## For Developers
+
+### Updating Release Notes
+
+When adding new release notes, you need to update **both** files:
+
+1. **`RELEASE_NOTES.md`** – Markdown file with detailed release notes (formatted for documentation)
+2. **`src/views/ReleaseNotesView.js`** – JavaScript view file that displays release notes in the application's Release Notes page
+
+Both files should contain the same release information to keep the documentation and application in sync. The `RELEASE_NOTES.md` file provides detailed formatted documentation, while `ReleaseNotesView.js` renders the release notes in the application's UI.
 

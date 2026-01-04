@@ -24,6 +24,7 @@ import { TilesView } from '../views/TilesView.js';
 import { ErrorsView } from '../views/ErrorsView.js';
 import { KnowledgeGapsView } from '../views/KnowledgeGapsView.js';
 import { HelpView } from '../views/HelpView.js';
+import { ReleaseNotesView } from '../views/ReleaseNotesView.js';
 import { migrateHistory, byId, createHistoryEntry, getPrevSibling, getNextSibling } from '../utils/NodeUtils.js';
 import { compareIds } from '../utils/IdUtils.js';
 
@@ -57,6 +58,7 @@ export class AppController {
     this.errorsView = new ErrorsView(this.validation, this.eventBus, this.dom);
     this.knowledgeGapsView = new KnowledgeGapsView(this.state, this.eventBus, this.dom);
     this.helpView = new HelpView(this.state, this.eventBus, this.dom);
+    this.releaseNotesView = new ReleaseNotesView(this.state, this.eventBus, this.dom);
 
     // Set view manager reference for tiles view
     this.tilesView.setViewManager(this.viewManager);
@@ -339,9 +341,38 @@ export class AppController {
       };
     }
 
+    // More dropdown menu
+    if (els.btnNavMore && els.navMoreMenu) {
+      els.btnNavMore.onclick = (e) => {
+        e.stopPropagation();
+        const isHidden = els.navMoreMenu.classList.contains('hidden');
+        this.closeMoreMenu();
+        if (isHidden) {
+          els.navMoreMenu.classList.remove('hidden');
+        }
+      };
+    }
+
+    // Close dropdown when clicking outside
+    document.addEventListener('click', (e) => {
+      if (els.navMoreMenu && els.btnNavMore) {
+        if (!els.navMoreMenu.contains(e.target) && !els.btnNavMore.contains(e.target)) {
+          this.closeMoreMenu();
+        }
+      }
+    });
+
     if (els.btnNavHelp) {
       els.btnNavHelp.onclick = () => {
+        this.closeMoreMenu();
         this.switchToPage('help');
+      };
+    }
+
+    if (els.btnNavReleaseNotes) {
+      els.btnNavReleaseNotes.onclick = () => {
+        this.closeMoreMenu();
+        this.switchToPage('releaseNotes');
       };
     }
 
@@ -379,30 +410,44 @@ export class AppController {
   }
 
   /**
-   * Switch between main view, nodes page, gaps page, and help page
-   * @param {string} page - Page name ('main', 'nodes', 'gaps', or 'help')
+   * Close the More dropdown menu
+   */
+  closeMoreMenu() {
+    const navMoreMenu = this.dom.get('navMoreMenu');
+    if (navMoreMenu) {
+      navMoreMenu.classList.add('hidden');
+    }
+  }
+
+  /**
+   * Switch between main view, nodes page, gaps page, help page, and release notes page
+   * @param {string} page - Page name ('main', 'nodes', 'gaps', 'help', or 'releaseNotes')
    */
   switchToPage(page) {
     const mainView = this.dom.get('mainView');
     const nodesPageContainer = this.dom.get('nodesPageContainer');
     const knowledgeGapsContainer = this.dom.get('knowledgeGapsContainer');
     const helpContainer = this.dom.get('helpContainer');
+    const releaseNotesContainer = this.dom.get('releaseNotesContainer');
     const btnNavMain = this.dom.get('btnNavMain');
     const btnNavNodes = this.dom.get('btnNavNodes');
     const btnNavGaps = this.dom.get('btnNavGaps');
     const btnNavHelp = this.dom.get('btnNavHelp');
+    const btnNavReleaseNotes = this.dom.get('btnNavReleaseNotes');
 
     // Hide all pages first
     if (mainView) mainView.classList.add('hidden');
     if (nodesPageContainer) nodesPageContainer.classList.add('hidden');
     if (knowledgeGapsContainer) knowledgeGapsContainer.classList.add('hidden');
     if (helpContainer) helpContainer.classList.add('hidden');
+    if (releaseNotesContainer) releaseNotesContainer.classList.add('hidden');
     
     // Remove active state from all nav buttons
     if (btnNavMain) btnNavMain.classList.remove('active');
     if (btnNavNodes) btnNavNodes.classList.remove('active');
     if (btnNavGaps) btnNavGaps.classList.remove('active');
     if (btnNavHelp) btnNavHelp.classList.remove('active');
+    if (btnNavReleaseNotes) btnNavReleaseNotes.classList.remove('active');
 
     if (page === 'nodes') {
       this.currentPage = 'nodes';
@@ -422,6 +467,12 @@ export class AppController {
       if (btnNavHelp) btnNavHelp.classList.add('active');
       // Render help page
       this.helpView.render();
+    } else if (page === 'releaseNotes') {
+      this.currentPage = 'releaseNotes';
+      if (releaseNotesContainer) releaseNotesContainer.classList.remove('hidden');
+      if (btnNavReleaseNotes) btnNavReleaseNotes.classList.add('active');
+      // Render release notes page
+      this.releaseNotesView.render();
     } else {
       this.currentPage = 'main';
       if (mainView) mainView.classList.remove('hidden');
