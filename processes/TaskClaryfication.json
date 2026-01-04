@@ -1,0 +1,198 @@
+{
+    "title": "Structured Task Clarification & Execution Control Framework",
+    "nodes": [
+      {
+        "id": 1,
+        "title": "Pause Before Action",
+        "body": "Stop before starting execution.\n\nDo not begin work based on assumptions or intuition.\nIf you cannot clearly explain what \"done\" means, the task is not ready.\n\nBefore moving forward, align on a shared clarification template.\nThis template defines what \"clarified\" actually means and acts as a contract for further discussion.\n\n---\n\nTASK CLARIFICATION TEMPLATE (BASE VERSION)\n\nTask Name:\n- Concrete and operational, includes an action verb\n\nGoal (WHY?):\n- What problem are we solving or what value are we delivering?\n\nScope (WHAT?):\nIN SCOPE:\n- What must be included\n\nOUT OF SCOPE:\n- What is explicitly excluded\n\nAcceptance Criteria (WHEN IS IT DONE?):\n- Observable and testable success conditions\n\nPriority / Deadline:\n- Relative priority (high / medium / low)\n- Deadline, sprint, or time constraint\n\nDependencies / Constraints:\n- External teams, systems, or limitations\n\nDecision Owner / Point of Contact:\n- Who approves outcomes or resolves ambiguity\n\n---\n\nMINIMAL \"EMERGENCY\" VERSION (WHEN TIME IS LIMITED)\n\nGoal:\n- ...\n\nScope:\n- ...\n\nDefinition of Done:\n- ...\n\nIf these three fields cannot be filled, the task is not ready for execution.\n\nUse this template as the reference point for all clarification steps that follow.",
+        "choices": [
+          {
+            "label": "Proceed to clarification checklist",
+            "to": 2
+          }
+        ]
+      },
+      {
+        "id": 2,
+        "title": "Identify the Missing Information",
+        "body": "Use this step as a checklist mapped directly to the clarification template.\n\nSystematically verify whether each required section is sufficiently defined.\nIterate until no meaningful gaps remain.\n\nChecklist areas:\n- Goal\n- Scope (in scope / out of scope)\n- Acceptance Criteria\n- Priority & Deadline\n- Dependencies & Constraints\n- Decision Ownership\n\nDo not proceed until the template can be reasonably filled.",
+        "choices": [
+          {
+            "label": "Clarify goal or business purpose",
+            "to": "2.1"
+          },
+          {
+            "label": "Clarify scope and boundaries",
+            "to": "2.2"
+          },
+          {
+            "label": "Clarify acceptance criteria",
+            "to": "2.3"
+          },
+          {
+            "label": "Clarify priority and deadline",
+            "to": "2.4"
+          },
+          {
+            "label": "Clarify dependencies or constraints",
+            "to": "2.6"
+          },
+          {
+            "label": "Clarify decision ownership",
+            "to": "2.5"
+          },
+          {
+            "label": "All critical areas are clarified",
+            "to": 3
+          }
+        ]
+      },
+      {
+        "id": "2.1",
+        "title": "Clarify the Goal",
+        "body": "Define the WHY.\n\nHelpful questions:\n- What problem does this task solve?\n- What value is delivered if it succeeds?\n- Who benefits and how?\n- What negative outcome occurs if this is not done?\n\nThe goal should fit into one clear sentence.",
+        "choices": [
+          {
+            "label": "Goal clarified – return to checklist",
+            "to": 2
+          }
+        ]
+      },
+      {
+        "id": "2.2",
+        "title": "Clarify the Scope",
+        "body": "Define WHAT is included and excluded.\n\nHelpful questions:\n- What must be delivered for this to count as complete?\n- What is explicitly not part of this task?\n- What common assumptions should be ruled out?\n\nIf scope is not written down, it will expand silently.",
+        "choices": [
+          {
+            "label": "Scope clarified – return to checklist",
+            "to": 2
+          }
+        ]
+      },
+      {
+        "id": "2.3",
+        "title": "Clarify Acceptance Criteria",
+        "body": "Define WHEN the task is done.\n\nHelpful questions:\n- How will we verify success?\n- What conditions must be met for acceptance?\n- Who confirms that criteria are satisfied?\n\nAcceptance criteria must remove interpretation.",
+        "choices": [
+          {
+            "label": "Acceptance criteria clarified – return to checklist",
+            "to": 2
+          }
+        ]
+      },
+      {
+        "id": "2.4",
+        "title": "Clarify Priority and Deadline",
+        "body": "Define urgency and importance.\n\nHelpful questions:\n- How does this compare to other tasks?\n- Is there a fixed deadline or flexible window?\n- What happens if this slips?\n\nUnclear priority guarantees conflict later.",
+        "choices": [
+          {
+            "label": "Priority and deadline clarified – return to checklist",
+            "to": 2
+          }
+        ]
+      },
+      {
+        "id": "2.5",
+        "title": "Clarify Decision Ownership",
+        "body": "Define WHO decides.\n\nHelpful questions:\n- Who approves the final outcome?\n- Who resolves disagreements?\n- Who can change requirements mid-way?\n\nWithout ownership, every decision is provisional.",
+        "choices": [
+          {
+            "label": "Decision ownership clarified – return to checklist",
+            "to": 2
+          }
+        ]
+      },
+      {
+        "id": "2.6",
+        "title": "Clarify Dependencies and Constraints",
+        "body": "Surface external factors early.\n\nHelpful questions:\n- Are other teams or systems involved?\n- Are there technical, legal, or process constraints?\n- What assumptions depend on others?\n\nHidden dependencies are delayed failures.",
+        "choices": [
+          {
+            "label": "Dependencies clarified – return to checklist",
+            "to": 2
+          }
+        ]
+      },
+      {
+        "id": 3,
+        "title": "Ask Structured Decision-Forcing Questions",
+        "body": "Use the filled template to ask precise questions.\n\nYour goal is confirmation or explicit change, not discussion.\n\nExamples:\n- Is this goal correct?\n- Are we explicitly excluding these items?\n- Which acceptance criterion is mandatory vs optional?\n\nPrecision beats politeness.",
+        "choices": [
+          {
+            "label": "Stakeholder provided clear answers",
+            "to": 5
+          },
+          {
+            "label": "Stakeholder cannot provide clear answers",
+            "to": 4
+          }
+        ]
+      },
+      {
+        "id": 4,
+        "title": "Propose Your Own Interpretation",
+        "body": "Create a draft using the clarification template.\n\nThe draft should contain:\n- Goal (one sentence)\n- Scope: in scope / out of scope\n- Acceptance criteria (bullet points)\n- Assumptions you are making\n- Open questions that remain\n\nPresent it as a proposal for confirmation.\nThis shifts the conversation from ambiguity to concrete validation.",
+        "choices": [
+          {
+            "label": "Proposal accepted or adjusted",
+            "to": 5
+          },
+          {
+            "label": "Proposal rejected or ignored",
+            "to": 8
+          }
+        ]
+      },
+      {
+        "id": 5,
+        "title": "Define the First Meaningful Action",
+        "body": "Identify the smallest next step that can be executed without guessing.\n\nThe action should reduce uncertainty or validate assumptions.\nIf it still depends on interpretation, break it down further.",
+        "choices": [
+          {
+            "label": "First action defined",
+            "to": 6
+          }
+        ]
+      },
+      {
+        "id": 6,
+        "title": "Set a Decision Checkpoint",
+        "body": "Define when and how validation happens.\n\nSpecify:\n- Timing\n- Decision-maker\n- Exact question to be answered\n\nNever work long in silence on unclear tasks.",
+        "choices": [
+          {
+            "label": "Checkpoint agreed",
+            "to": 7
+          }
+        ]
+      },
+      {
+        "id": 7,
+        "title": "Document Agreements",
+        "body": "Persist the filled template or key conclusions in writing.\n\nWritten clarity prevents regression into ambiguity.",
+        "choices": [
+          {
+            "label": "Proceed with execution",
+            "to": 9
+          }
+        ]
+      },
+      {
+        "id": 8,
+        "title": "Evaluate Red Flags",
+        "body": "Escalate or renegotiate if core elements remain unstable.\n\nThis is risk management, not obstruction.",
+        "choices": [
+          {
+            "label": "Escalation or renegotiation completed",
+            "to": 9
+          }
+        ]
+      },
+      {
+        "id": 9,
+        "title": "Ready for Controlled Execution",
+        "body": "The task is now structured, validated, and documented.\n\nExecution can proceed with shared understanding and controlled risk.",
+        "choices": []
+      }
+    ]
+  }
+  
