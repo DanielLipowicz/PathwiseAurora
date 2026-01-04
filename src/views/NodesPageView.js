@@ -126,21 +126,34 @@ export class NodesPageView {
           <button id="btnNodesPageNewNode" class="primary">New Node</button>
         </div>
       </div>
-      <div class="nodes-page-search-container">
-        <input type="text" id="nodesPageSearch" 
-               placeholder="Search nodes (id/title/content/choices)..." 
-               value="${escapeHtml(this.filterQuery)}"
-               style="flex: 1; width: 100%;" />
-        <button id="btnNodesPageClearFilters" 
-                class="ghost" 
-                title="Clear filters"
-                ${this.filterQuery ? '' : 'style="display: none;"'}>Clear Filters</button>
-      </div>
-      <div class="nodes-page-stats">
-        <span class="stat-item">Total Nodes: <strong>${allNodes.length}</strong></span>
-        ${q ? `<span class="stat-item">Filtered: <strong>${nodes.length}</strong></span>` : ''}
-      </div>
-      <div class="nodes-page-list" id="nodesPageList">
+      <div class="nodes-page-layout">
+        <div class="nodes-page-sidebar">
+          <div class="nodes-page-sidebar-header">
+            <label>Przypięte</label>
+          </div>
+          <div class="nodes-page-id-list">
+            ${allNodes.map(node => {
+              const nodeId = String(node.id);
+              return `<button class="btn-node-id-link" data-target-id="${escapeHtml(nodeId)}" title="Go to node #${escapeHtml(nodeId)}">#${escapeHtml(nodeId)}</button>`;
+            }).join('')}
+          </div>
+        </div>
+        <div class="nodes-page-content">
+          <div class="nodes-page-search-container">
+            <input type="text" id="nodesPageSearch" 
+                   placeholder="Search nodes (id/title/content/choices)..." 
+                   value="${escapeHtml(this.filterQuery)}"
+                   style="flex: 1; width: 100%;" />
+            <button id="btnNodesPageClearFilters" 
+                    class="ghost" 
+                    title="Clear filters"
+                    ${this.filterQuery ? '' : 'style="display: none;"'}>Clear Filters</button>
+          </div>
+          <div class="nodes-page-stats">
+            <span class="stat-item">Total Nodes: <strong>${allNodes.length}</strong></span>
+            ${q ? `<span class="stat-item">Filtered: <strong>${nodes.length}</strong></span>` : ''}
+          </div>
+          <div class="nodes-page-list" id="nodesPageList">
     `;
 
     for (const node of nodes) {
@@ -264,6 +277,8 @@ export class NodesPageView {
     }
 
     html += `
+          </div>
+        </div>
       </div>
       <datalist id="nodeIdsList">
         ${graph.nodes.map(n => `<option value="${escapeHtml(String(n.id))}">${escapeHtml(n.title || '')}</option>`).join('')}
@@ -600,6 +615,16 @@ export class NodesPageView {
         const node = byId(nodeId, graph.nodes);
         if (node) {
           this.events.emit('node:add-child-requested', node);
+        }
+      };
+    });
+
+    // Node ID buttons in sidebar (pinned nodes)
+    container.querySelectorAll('.btn-node-id-link').forEach(btn => {
+      btn.onclick = () => {
+        const targetId = btn.dataset.targetId;
+        if (targetId) {
+          this.focusOnNode(targetId);
         }
       };
     });
