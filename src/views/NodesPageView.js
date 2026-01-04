@@ -123,7 +123,7 @@ export class NodesPageView {
       <div class="nodes-page-header">
         <h2>Knowledge Graph Management</h2>
         <div class="nodes-page-actions">
-          <button id="btnNodesPageNewNode" class="primary">New Node</button>
+          <button id="btnNodesPageNewNode" class="success">New Node</button>
         </div>
       </div>
       <div class="nodes-page-layout">

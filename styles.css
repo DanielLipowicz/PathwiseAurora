@@ -45,6 +45,8 @@ label { display:block; font-size:12px; }
 button { background:#142131; color:var(--text); border:1px solid #223142; border-radius:10px; padding:8px 12px; cursor:pointer; transition:.15s ease; }
 button:hover { background:#1a2a3d; }
 button.primary { background:linear-gradient(180deg,#1b66cc,#1356b3); border-color:#2d71d1; }
+button.success { background:linear-gradient(180deg,#3e9f67,#2d8052); border-color:#4aaf75; color:#fff; }
+button.success:hover { background:linear-gradient(180deg,#4aaf75,#3e9f67); border-color:#5bd18a; }
 button.ghost { background:transparent; border-color:transparent; color:var(--muted); }
 button.warn { border-color:#70511f; color:#ffde9b; background:#3a2a10; }
 button.danger { border-color:#6b1f1f; color:#ffd5d5; background:#3a1010; }
@@ -871,6 +873,38 @@ button.danger { border-color:#6b1f1f; color:#ffd5d5; background:#3a1010; }
   margin-bottom: 32px;
   padding-bottom: 20px;
   border-bottom: 1px solid #1f2a35;
+}
+.help-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 24px;
+  border-bottom: 1px solid #1f2a35;
+}
+.help-tab {
+  padding: 12px 24px;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--muted);
+  font-size: 15px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  margin-bottom: -1px;
+}
+.help-tab:hover {
+  color: var(--text);
+  background: rgba(77,163,255,0.05);
+}
+.help-tab.active {
+  color: var(--primary);
+  border-bottom-color: var(--primary);
+}
+.help-tab-content {
+  display: none;
+}
+.help-tab-content.active {
+  display: block;
 }
 .help-header h1 {
   font-size: 28px;
