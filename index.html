@@ -23,9 +23,16 @@
           <button id="btnNavReleaseNotes" class="nav-dropdown-item" title="Release Notes">Release Notes</button>
         </div>
       </div>
+      <div class="nav-dropdown">
+        <button id="btnNavImport" class="nav-button" title="Import">Import</button>
+        <div class="nav-dropdown-menu hidden" id="navImportMenu">
+          <button id="btnImportJson" class="nav-dropdown-item" title="Import JSON">Import JSON</button>
+          <button id="btnExtendProcess" class="nav-dropdown-item" title="Extend Existing Process">Extend Existing Process</button>
+        </div>
+      </div>
       <div class="divider-vertical"></div>
       <input type="file" id="importFile" accept="application/json" class="hidden" />
-      <button id="btnImport">Import JSON</button>
+      <input type="file" id="extendFile" accept="application/json" class="hidden" />
       <button id="btnExport" class="primary">Export JSON</button>
       <button id="btnExportSession">Save Session Flow</button>
       <button id="btnEmailSummary">Email Summary</button>

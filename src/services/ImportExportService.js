@@ -7,6 +7,7 @@ import { StorageService } from './StorageService.js';
 import { migrateHistory } from '../utils/NodeUtils.js';
 import { generateEmailSummary } from '../utils/EmailSummaryGenerator.js';
 import { generateConfluenceExport } from '../utils/ConfluenceExportGenerator.js';
+import { nextId } from '../utils/IdUtils.js';
 
 export class ImportExportService {
   constructor(storageService) {
@@ -359,6 +360,175 @@ export class ImportExportService {
           onError(e);
         } else {
           alert('Import error: ' + e.message);
+        }
+      }
+    };
+    reader.readAsText(file);
+  }
+
+  /**
+   * Extend existing process by importing and merging nodes from a file
+   * Validates the file against schema, reassigns IDs to avoid conflicts,
+   * and translates all relations to maintain flow integrity
+   * @param {File} file - File to import
+   * @param {Object} existingGraph - Current graph object
+   * @param {Object} validationService - Validation service instance
+   * @param {Function} onSuccess - Callback with merged graph
+   * @param {Function} onError - Error callback
+   */
+  extendExistingProcess(file, existingGraph, validationService, onSuccess, onError) {
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const data = JSON.parse(reader.result);
+
+        // Handle new format with history (graph + session) or old format (graph only)
+        let graphData;
+
+        if (data.graph && Array.isArray(data.graph.nodes)) {
+          // New format: { graph: {...}, session: {...} }
+          graphData = data.graph;
+        } else if (Array.isArray(data.nodes)) {
+          // Old format: graph only
+          graphData = data;
+        } else {
+          throw new Error('Invalid format: file must contain a graph with nodes');
+        }
+
+        if (!graphData || !Array.isArray(graphData.nodes) || graphData.nodes.length === 0) {
+          throw new Error('Invalid format: file must contain at least one node');
+        }
+
+        // Validate imported graph structure
+        const importedGraph = {
+          title: String(graphData.title || 'Imported Graph'),
+          nodes: graphData.nodes.map(n => ({
+            id: String(n.id),
+            title: String(n.title || ''),
+            body: String(n.body || ''),
+            choices: Array.isArray(n.choices) ? n.choices.map(c => ({
+              label: String(c.label || ''),
+              to: String(c.to)
+            })) : []
+          }))
+        };
+
+        // Validate using ValidationService
+        if (validationService) {
+          const validationResult = validationService.validate(importedGraph);
+          if (!validationResult.ok) {
+            throw new Error('Validation failed: ' + validationResult.messages.join(', '));
+          }
+        }
+
+        // Get existing nodes
+        const existingNodes = existingGraph.nodes || [];
+        const existingIds = new Set(existingNodes.map(n => String(n.id)));
+
+        // Find next available root ID for imported nodes
+        const startRootId = nextId(existingNodes);
+        const startRootNum = parseInt(startRootId, 10);
+
+        // Create ID mapping: oldId -> newId
+        const idMapping = new Map();
+        let currentRootNum = startRootNum;
+
+        // First pass: map root-level nodes
+        const rootNodes = importedGraph.nodes.filter(n => !String(n.id).includes('.'));
+        for (const node of rootNodes) {
+          const newId = String(currentRootNum);
+          idMapping.set(String(node.id), newId);
+          currentRootNum++;
+        }
+
+        // Second pass: map nested nodes, preserving hierarchy
+        // Process nodes level by level (depth 1, then 2, then 3, etc.)
+        const nodesByDepth = new Map();
+        for (const node of importedGraph.nodes) {
+          const oldId = String(node.id);
+          if (idMapping.has(oldId)) continue; // Already mapped (root node)
+          
+          const depth = oldId.split('.').length;
+          if (!nodesByDepth.has(depth)) {
+            nodesByDepth.set(depth, []);
+          }
+          nodesByDepth.get(depth).push(node);
+        }
+
+        // Process each depth level
+        const depths = Array.from(nodesByDepth.keys()).sort((a, b) => a - b);
+        for (const depth of depths) {
+          const nodesAtDepth = nodesByDepth.get(depth);
+          
+          // Sort nodes at this depth by their ID parts
+          nodesAtDepth.sort((a, b) => {
+            const aParts = String(a.id).split('.').map(Number);
+            const bParts = String(b.id).split('.').map(Number);
+            for (let i = 0; i < Math.max(aParts.length, bParts.length); i++) {
+              const aVal = aParts[i] || 0;
+              const bVal = bParts[i] || 0;
+              if (aVal !== bVal) return aVal - bVal;
+            }
+            return 0;
+          });
+
+          // Map each node at this depth
+          for (const node of nodesAtDepth) {
+            const oldId = String(node.id);
+            const parts = oldId.split('.');
+            
+            // Get parent ID (all parts except the last)
+            const parentOldId = parts.slice(0, -1).join('.');
+            const parentNewId = idMapping.get(parentOldId);
+            
+            if (!parentNewId) {
+              throw new Error(`Cannot find parent mapping for node ${oldId}. Parent ${parentOldId} not mapped.`);
+            }
+
+            // Generate new child ID preserving the child number
+            const childNum = parseInt(parts[parts.length - 1], 10);
+            const newId = `${parentNewId}.${childNum}`;
+            idMapping.set(oldId, newId);
+          }
+        }
+
+        // Create new nodes with reassigned IDs and translated relations
+        const newNodes = importedGraph.nodes.map(node => {
+          const oldId = String(node.id);
+          const newId = idMapping.get(oldId);
+
+          if (!newId) {
+            throw new Error(`Failed to map ID: ${oldId}`);
+          }
+
+          return {
+            id: newId,
+            title: node.title,
+            body: node.body,
+            choices: node.choices.map(choice => ({
+              label: choice.label,
+              to: idMapping.get(String(choice.to)) || String(choice.to) // Map target ID
+            }))
+          };
+        });
+
+        // Merge with existing nodes
+        const mergedNodes = [...existingNodes, ...newNodes];
+
+        // Create merged graph
+        const mergedGraph = {
+          title: existingGraph.title || 'Graph',
+          nodes: mergedNodes
+        };
+
+        if (onSuccess) {
+          onSuccess(mergedGraph);
+        }
+      } catch (e) {
+        if (onError) {
+          onError(e);
+        } else {
+          alert('Extend process error: ' + e.message);
         }
       }
     };

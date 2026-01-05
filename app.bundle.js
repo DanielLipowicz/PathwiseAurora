@@ -78,7 +78,6 @@
         filter: document.getElementById("filterInput"),
         clearFilter: document.getElementById("btnClearFilter"),
         importFile: document.getElementById("importFile"),
-        btnImport: document.getElementById("btnImport"),
         btnExport: document.getElementById("btnExport"),
         btnExportSession: document.getElementById("btnExportSession"),
         btnEmailSummary: document.getElementById("btnEmailSummary"),
@@ -114,6 +113,11 @@
         navMoreMenu: document.getElementById("navMoreMenu"),
         btnNavHelp: document.getElementById("btnNavHelp"),
         btnNavReleaseNotes: document.getElementById("btnNavReleaseNotes"),
+        btnNavImport: document.getElementById("btnNavImport"),
+        navImportMenu: document.getElementById("navImportMenu"),
+        btnImportJson: document.getElementById("btnImportJson"),
+        btnExtendProcess: document.getElementById("btnExtendProcess"),
+        extendFile: document.getElementById("extendFile"),
         emailSummaryModal: document.getElementById("emailSummaryModal"),
         emailSummaryFormat: document.getElementById("emailSummaryFormat"),
         emailSummaryText: document.getElementById("emailSummaryText"),
@@ -851,6 +855,42 @@
     return String(text).replace(/\|/g, "\\|");
   }
 
+  // src/utils/IdUtils.js
+  function compareIds(a, b) {
+    const aStr = String(a);
+    const bStr = String(b);
+    const aParts = aStr.split(".").map(Number);
+    const bParts = bStr.split(".").map(Number);
+    const maxLen = Math.max(aParts.length, bParts.length);
+    for (let i = 0; i < maxLen; i++) {
+      const aVal = aParts[i] || 0;
+      const bVal = bParts[i] || 0;
+      if (aVal !== bVal)
+        return aVal - bVal;
+    }
+    return 0;
+  }
+  function nextId(nodes) {
+    if (!nodes || nodes.length === 0)
+      return "1";
+    const rootNodes = nodes.filter((n) => !String(n.id).includes("."));
+    if (rootNodes.length === 0)
+      return "1";
+    const maxRoot = Math.max(...rootNodes.map((n) => Number(String(n.id).split(".")[0])));
+    return String(maxRoot + 1);
+  }
+  function nextChildId(parentId, nodes, getChildren2) {
+    const children = getChildren2(parentId, nodes);
+    if (children.length === 0)
+      return `${parentId}.1`;
+    const childNums = children.map((n) => {
+      const parts = String(n.id).split(".");
+      return Number(parts[parts.length - 1]);
+    });
+    const maxChild = Math.max(...childNums);
+    return `${parentId}.${maxChild + 1}`;
+  }
+
   // src/services/ImportExportService.js
   var ImportExportService = class {
     constructor(storageService) {
@@ -1147,6 +1187,135 @@
       };
       reader.readAsText(file);
     }
+    /**
+     * Extend existing process by importing and merging nodes from a file
+     * Validates the file against schema, reassigns IDs to avoid conflicts,
+     * and translates all relations to maintain flow integrity
+     * @param {File} file - File to import
+     * @param {Object} existingGraph - Current graph object
+     * @param {Object} validationService - Validation service instance
+     * @param {Function} onSuccess - Callback with merged graph
+     * @param {Function} onError - Error callback
+     */
+    extendExistingProcess(file, existingGraph, validationService, onSuccess, onError) {
+      const reader = new FileReader();
+      reader.onload = () => {
+        try {
+          const data = JSON.parse(reader.result);
+          let graphData;
+          if (data.graph && Array.isArray(data.graph.nodes)) {
+            graphData = data.graph;
+          } else if (Array.isArray(data.nodes)) {
+            graphData = data;
+          } else {
+            throw new Error("Invalid format: file must contain a graph with nodes");
+          }
+          if (!graphData || !Array.isArray(graphData.nodes) || graphData.nodes.length === 0) {
+            throw new Error("Invalid format: file must contain at least one node");
+          }
+          const importedGraph = {
+            title: String(graphData.title || "Imported Graph"),
+            nodes: graphData.nodes.map((n) => ({
+              id: String(n.id),
+              title: String(n.title || ""),
+              body: String(n.body || ""),
+              choices: Array.isArray(n.choices) ? n.choices.map((c) => ({
+                label: String(c.label || ""),
+                to: String(c.to)
+              })) : []
+            }))
+          };
+          if (validationService) {
+            const validationResult = validationService.validate(importedGraph);
+            if (!validationResult.ok) {
+              throw new Error("Validation failed: " + validationResult.messages.join(", "));
+            }
+          }
+          const existingNodes = existingGraph.nodes || [];
+          const existingIds = new Set(existingNodes.map((n) => String(n.id)));
+          const startRootId = nextId(existingNodes);
+          const startRootNum = parseInt(startRootId, 10);
+          const idMapping = /* @__PURE__ */ new Map();
+          let currentRootNum = startRootNum;
+          const rootNodes = importedGraph.nodes.filter((n) => !String(n.id).includes("."));
+          for (const node of rootNodes) {
+            const newId = String(currentRootNum);
+            idMapping.set(String(node.id), newId);
+            currentRootNum++;
+          }
+          const nodesByDepth = /* @__PURE__ */ new Map();
+          for (const node of importedGraph.nodes) {
+            const oldId = String(node.id);
+            if (idMapping.has(oldId))
+              continue;
+            const depth = oldId.split(".").length;
+            if (!nodesByDepth.has(depth)) {
+              nodesByDepth.set(depth, []);
+            }
+            nodesByDepth.get(depth).push(node);
+          }
+          const depths = Array.from(nodesByDepth.keys()).sort((a, b) => a - b);
+          for (const depth of depths) {
+            const nodesAtDepth = nodesByDepth.get(depth);
+            nodesAtDepth.sort((a, b) => {
+              const aParts = String(a.id).split(".").map(Number);
+              const bParts = String(b.id).split(".").map(Number);
+              for (let i = 0; i < Math.max(aParts.length, bParts.length); i++) {
+                const aVal = aParts[i] || 0;
+                const bVal = bParts[i] || 0;
+                if (aVal !== bVal)
+                  return aVal - bVal;
+              }
+              return 0;
+            });
+            for (const node of nodesAtDepth) {
+              const oldId = String(node.id);
+              const parts = oldId.split(".");
+              const parentOldId = parts.slice(0, -1).join(".");
+              const parentNewId = idMapping.get(parentOldId);
+              if (!parentNewId) {
+                throw new Error(`Cannot find parent mapping for node ${oldId}. Parent ${parentOldId} not mapped.`);
+              }
+              const childNum = parseInt(parts[parts.length - 1], 10);
+              const newId = `${parentNewId}.${childNum}`;
+              idMapping.set(oldId, newId);
+            }
+          }
+          const newNodes = importedGraph.nodes.map((node) => {
+            const oldId = String(node.id);
+            const newId = idMapping.get(oldId);
+            if (!newId) {
+              throw new Error(`Failed to map ID: ${oldId}`);
+            }
+            return {
+              id: newId,
+              title: node.title,
+              body: node.body,
+              choices: node.choices.map((choice) => ({
+                label: choice.label,
+                to: idMapping.get(String(choice.to)) || String(choice.to)
+                // Map target ID
+              }))
+            };
+          });
+          const mergedNodes = [...existingNodes, ...newNodes];
+          const mergedGraph = {
+            title: existingGraph.title || "Graph",
+            nodes: mergedNodes
+          };
+          if (onSuccess) {
+            onSuccess(mergedGraph);
+          }
+        } catch (e) {
+          if (onError) {
+            onError(e);
+          } else {
+            alert("Extend process error: " + e.message);
+          }
+        }
+      };
+      reader.readAsText(file);
+    }
   };
 
   // src/services/UrlService.js
@@ -1178,42 +1347,6 @@
       return urlParams.get("node");
     }
   };
-
-  // src/utils/IdUtils.js
-  function compareIds(a, b) {
-    const aStr = String(a);
-    const bStr = String(b);
-    const aParts = aStr.split(".").map(Number);
-    const bParts = bStr.split(".").map(Number);
-    const maxLen = Math.max(aParts.length, bParts.length);
-    for (let i = 0; i < maxLen; i++) {
-      const aVal = aParts[i] || 0;
-      const bVal = bParts[i] || 0;
-      if (aVal !== bVal)
-        return aVal - bVal;
-    }
-    return 0;
-  }
-  function nextId(nodes) {
-    if (!nodes || nodes.length === 0)
-      return "1";
-    const rootNodes = nodes.filter((n) => !String(n.id).includes("."));
-    if (rootNodes.length === 0)
-      return "1";
-    const maxRoot = Math.max(...rootNodes.map((n) => Number(String(n.id).split(".")[0])));
-    return String(maxRoot + 1);
-  }
-  function nextChildId(parentId, nodes, getChildren2) {
-    const children = getChildren2(parentId, nodes);
-    if (children.length === 0)
-      return `${parentId}.1`;
-    const childNums = children.map((n) => {
-      const parts = String(n.id).split(".");
-      return Number(parts[parts.length - 1]);
-    });
-    const maxChild = Math.max(...childNums);
-    return `${parentId}.${maxChild + 1}`;
-  }
 
   // src/controllers/NodeController.js
   var NodeController = class {
@@ -4143,6 +4276,17 @@
 
         <div class="help-content">
           <section class="help-section">
+            <h3>2026-01-05</h3>
+            <ul>
+              <li>Added Import dropdown menu in header navigation</li>
+              <li>Added "Extend Existing Process" feature to merge imported nodes into existing process</li>
+              <li>Automatic ID reassignment prevents conflicts when extending processes</li>
+              <li>All choice references are automatically translated to maintain flow integrity</li>
+              <li>Moved "Import JSON" from standalone button to Import dropdown menu</li>
+            </ul>
+          </section>
+
+          <section class="help-section">
             <h3>2026-01-04</h3>
             <ul>
               <li>Added success button style</li>
@@ -4396,8 +4540,26 @@
           this.newSession();
         };
       }
-      if (els.btnImport) {
-        els.btnImport.onclick = () => {
+      if (els.btnNavImport && els.navImportMenu) {
+        els.btnNavImport.onclick = (e) => {
+          e.stopPropagation();
+          const isHidden = els.navImportMenu.classList.contains("hidden");
+          this.closeImportMenu();
+          if (isHidden) {
+            els.navImportMenu.classList.remove("hidden");
+          }
+        };
+      }
+      document.addEventListener("click", (e) => {
+        if (els.navImportMenu && els.btnNavImport) {
+          if (!els.navImportMenu.contains(e.target) && !els.btnNavImport.contains(e.target)) {
+            this.closeImportMenu();
+          }
+        }
+      });
+      if (els.btnImportJson) {
+        els.btnImportJson.onclick = () => {
+          this.closeImportMenu();
           if (els.importFile)
             els.importFile.click();
         };
@@ -4414,6 +4576,41 @@
             }, (error) => {
               alert("Import error: " + error.message);
             });
+          }
+          e.target.value = "";
+        };
+      }
+      if (els.btnExtendProcess) {
+        els.btnExtendProcess.onclick = () => {
+          this.closeImportMenu();
+          if (els.extendFile)
+            els.extendFile.click();
+        };
+      }
+      if (els.extendFile) {
+        els.extendFile.onchange = (e) => {
+          const f = e.target.files[0];
+          if (f) {
+            const currentGraph = this.state.getGraph();
+            if (!currentGraph) {
+              alert("No existing graph to extend. Please import a graph first.");
+              e.target.value = "";
+              return;
+            }
+            this.importExport.extendExistingProcess(
+              f,
+              currentGraph.toJSON(),
+              this.validation,
+              (mergedGraph) => {
+                this.state.setGraph(new Graph(mergedGraph));
+                this.renderAll();
+                this.validateAndUpdate();
+                alert(`Successfully extended process with ${mergedGraph.nodes.length - currentGraph.nodes.length} new nodes.`);
+              },
+              (error) => {
+                alert("Extend process error: " + error.message);
+              }
+            );
           }
           e.target.value = "";
         };
@@ -4531,6 +4728,15 @@
       const navMoreMenu = this.dom.get("navMoreMenu");
       if (navMoreMenu) {
         navMoreMenu.classList.add("hidden");
+      }
+    }
+    /**
+     * Close the Import dropdown menu
+     */
+    closeImportMenu() {
+      const navImportMenu = this.dom.get("navImportMenu");
+      if (navImportMenu) {
+        navImportMenu.classList.add("hidden");
       }
     }
     /**

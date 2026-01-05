@@ -29,6 +29,17 @@ export class ReleaseNotesView {
 
         <div class="help-content">
           <section class="help-section">
+            <h3>2026-01-05</h3>
+            <ul>
+              <li>Added Import dropdown menu in header navigation</li>
+              <li>Added "Extend Existing Process" feature to merge imported nodes into existing process</li>
+              <li>Automatic ID reassignment prevents conflicts when extending processes</li>
+              <li>All choice references are automatically translated to maintain flow integrity</li>
+              <li>Moved "Import JSON" from standalone button to Import dropdown menu</li>
+            </ul>
+          </section>
+
+          <section class="help-section">
             <h3>2026-01-04</h3>
             <ul>
               <li>Added success button style</li>

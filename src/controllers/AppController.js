@@ -257,9 +257,31 @@ export class AppController {
       };
     }
 
-    // Import button
-    if (els.btnImport) {
-      els.btnImport.onclick = () => {
+    // Import dropdown menu
+    if (els.btnNavImport && els.navImportMenu) {
+      els.btnNavImport.onclick = (e) => {
+        e.stopPropagation();
+        const isHidden = els.navImportMenu.classList.contains('hidden');
+        this.closeImportMenu();
+        if (isHidden) {
+          els.navImportMenu.classList.remove('hidden');
+        }
+      };
+    }
+
+    // Close dropdown when clicking outside
+    document.addEventListener('click', (e) => {
+      if (els.navImportMenu && els.btnNavImport) {
+        if (!els.navImportMenu.contains(e.target) && !els.btnNavImport.contains(e.target)) {
+          this.closeImportMenu();
+        }
+      }
+    });
+
+    // Import JSON button
+    if (els.btnImportJson) {
+      els.btnImportJson.onclick = () => {
+        this.closeImportMenu();
         if (els.importFile) els.importFile.click();
       };
     }
@@ -276,6 +298,44 @@ export class AppController {
           }, (error) => {
             alert('Import error: ' + error.message);
           });
+        }
+        e.target.value = '';
+      };
+    }
+
+    // Extend Existing Process button
+    if (els.btnExtendProcess) {
+      els.btnExtendProcess.onclick = () => {
+        this.closeImportMenu();
+        if (els.extendFile) els.extendFile.click();
+      };
+    }
+
+    if (els.extendFile) {
+      els.extendFile.onchange = (e) => {
+        const f = e.target.files[0];
+        if (f) {
+          const currentGraph = this.state.getGraph();
+          if (!currentGraph) {
+            alert('No existing graph to extend. Please import a graph first.');
+            e.target.value = '';
+            return;
+          }
+
+          this.importExport.extendExistingProcess(
+            f,
+            currentGraph.toJSON(),
+            this.validation,
+            (mergedGraph) => {
+              this.state.setGraph(new Graph(mergedGraph));
+              this.renderAll();
+              this.validateAndUpdate();
+              alert(`Successfully extended process with ${mergedGraph.nodes.length - currentGraph.nodes.length} new nodes.`);
+            },
+            (error) => {
+              alert('Extend process error: ' + error.message);
+            }
+          );
         }
         e.target.value = '';
       };
@@ -416,6 +476,16 @@ export class AppController {
     const navMoreMenu = this.dom.get('navMoreMenu');
     if (navMoreMenu) {
       navMoreMenu.classList.add('hidden');
+    }
+  }
+
+  /**
+   * Close the Import dropdown menu
+   */
+  closeImportMenu() {
+    const navImportMenu = this.dom.get('navImportMenu');
+    if (navImportMenu) {
+      navImportMenu.classList.add('hidden');
     }
   }
 
