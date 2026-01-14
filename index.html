@@ -158,6 +158,32 @@
     </div>
   </div>
 
+  <!-- Move Node Modal -->
+  <div id="moveNodeModal" class="modal hidden">
+    <div class="modal-content" style="max-width: 500px;">
+      <div class="modal-header">
+        <h2>Move Node</h2>
+        <button id="btnCloseMoveNode" class="modal-close">×</button>
+      </div>
+      <div class="modal-body">
+        <div style="margin-bottom: 16px;">
+          <p style="margin: 0 0 8px 0; color: var(--text); font-weight: 600;">Moving node: <span id="moveNodeCurrentId" style="color: var(--primary);">#</span></p>
+          <p style="margin: 0 0 8px 0; color: var(--muted); font-size: 13px;">Enter the target parent node ID, or leave empty to move to top-tier (root level).</p>
+        </div>
+        <div style="margin-bottom: 20px;">
+          <label for="moveNodeTargetParent" style="display: block; margin-bottom: 8px; font-weight: 600;">Target Parent ID:</label>
+          <input type="text" id="moveNodeTargetParent" placeholder="Leave empty for top-tier" style="width: 100%;" list="moveNodeParentsList" />
+          <datalist id="moveNodeParentsList"></datalist>
+          <p style="margin: 8px 0 0 0; color: var(--muted); font-size: 12px;">💡 Empty = top-tier node</p>
+        </div>
+        <div class="row" style="justify-content: flex-end; gap: 8px;">
+          <button id="btnCancelMoveNode" class="ghost">Cancel</button>
+          <button id="btnConfirmMoveNode" class="primary">Move Node</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Errors section at the bottom of main page -->
   <div id="errorsSection" class="errors-section hidden">
     <div class="errors-header">

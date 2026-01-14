@@ -4,7 +4,7 @@
  */
 
 import { nextId, nextChildId, compareIds } from '../utils/IdUtils.js';
-import { getChildren } from '../utils/NodeUtils.js';
+import { getChildren, migrateNode } from '../utils/NodeUtils.js';
 
 export class NodeController {
   constructor(stateManager, eventBus, storageService) {
@@ -41,6 +41,11 @@ export class NodeController {
 
     this.events.on('node:create-requested', () => {
       this.createNode();
+    });
+
+    // Node migration (move)
+    this.events.on('node:move-requested', ({ nodeId, newParentId }) => {
+      this.moveNode(nodeId, newParentId);
     });
   }
 
@@ -143,6 +148,28 @@ export class NodeController {
     this.events.emit('validation:requested');
     // Emit event with the new child node ID for focus handling
     this.events.emit('node:child-created', { childId, child });
+  }
+
+  /**
+   * Move a node to another parent (or to root)
+   * @param {string|number} nodeId - Node to move
+   * @param {string|number|null} newParentId - New parent node id, or null for root
+   */
+  moveNode(nodeId, newParentId) {
+    const graph = this.state.getGraph();
+    const session = this.state.getSession();
+    if (!graph || !session) return;
+
+    try {
+      graph.nodes = migrateNode(graph.nodes, nodeId, newParentId);
+    } catch (e) {
+      alert(`Move failed: ${e.message}`);
+      return;
+    }
+
+    this.storage.save(graph.toJSON(), session.toJSON());
+    this.state.setGraph(graph);
+    this.events.emit('validation:requested');
   }
 }
 

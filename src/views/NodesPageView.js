@@ -181,6 +181,7 @@ export class NodesPageView {
             </div>
             <div class="node-card-actions">
               <button class="btn-node-edit" data-action="edit" data-node-id="${escapeHtml(String(node.id))}" title="Edit">✏️</button>
+              <button class="btn-node-move" data-action="move" data-node-id="${escapeHtml(String(node.id))}" title="Move">↔️</button>
               <button class="btn-node-clone" data-action="clone" data-node-id="${escapeHtml(String(node.id))}" title="Clone">📋</button>
               <button class="btn-node-delete" data-action="delete" data-node-id="${escapeHtml(String(node.id))}" title="Delete">🗑️</button>
             </div>
@@ -594,6 +595,16 @@ export class NodesPageView {
       };
     });
 
+    // Move buttons
+    container.querySelectorAll('.btn-node-move').forEach(btn => {
+      btn.onclick = () => {
+        const nodeId = btn.dataset.nodeId;
+        if (nodeId) {
+          this.showMoveNodeModal(nodeId);
+        }
+      };
+    });
+
     // Delete buttons
     container.querySelectorAll('.btn-node-delete').forEach(btn => {
       btn.onclick = () => {
@@ -814,6 +825,99 @@ export class NodesPageView {
     setTimeout(() => {
       this.focusOnNode(sourceNodeId);
     }, 100);
+  }
+
+  /**
+   * Show modal for moving a node
+   * @param {string|number} nodeId - ID of the node to move
+   */
+  showMoveNodeModal(nodeId) {
+    const modal = this.dom.get('moveNodeModal');
+    const currentIdSpan = this.dom.get('moveNodeCurrentId');
+    const targetParentInput = this.dom.get('moveNodeTargetParent');
+    const parentsList = this.dom.get('moveNodeParentsList');
+    const btnClose = this.dom.get('btnCloseMoveNode');
+    const btnCancel = this.dom.get('btnCancelMoveNode');
+    const btnConfirm = this.dom.get('btnConfirmMoveNode');
+
+    if (!modal || !currentIdSpan || !targetParentInput || !parentsList || !btnClose || !btnCancel || !btnConfirm) {
+      alert('Move node modal elements not found.');
+      return;
+    }
+
+    const graph = this.state.getGraph();
+    if (!graph) return;
+
+    // Set current node ID
+    currentIdSpan.textContent = `#${nodeId}`;
+
+    // Clear and populate datalist with available parent nodes (exclude the node itself and its descendants)
+    parentsList.innerHTML = '';
+    const nodeIdStr = String(nodeId);
+    const availableParents = graph.nodes.filter(n => {
+      const nIdStr = String(n.id);
+      // Exclude the node itself and its descendants
+      return nIdStr !== nodeIdStr && !nIdStr.startsWith(nodeIdStr + '.');
+    });
+
+    availableParents.forEach(node => {
+      const option = document.createElement('option');
+      option.value = String(node.id);
+      option.textContent = `#${node.id} - ${node.title}`;
+      parentsList.appendChild(option);
+    });
+
+    // Clear input
+    targetParentInput.value = '';
+
+    // Setup close handlers
+    const closeModal = () => {
+      modal.classList.add('hidden');
+      targetParentInput.value = '';
+      // Clean up event listeners
+      btnClose.onclick = null;
+      btnCancel.onclick = null;
+      btnConfirm.onclick = null;
+      targetParentInput.onkeydown = null;
+    };
+
+    btnClose.onclick = closeModal;
+    btnCancel.onclick = closeModal;
+
+    // Setup confirm handler
+    btnConfirm.onclick = () => {
+      const trimmed = String(targetParentInput.value || '').trim();
+      const targetParentId = trimmed ? trimmed : null;
+
+      this.events.emit('node:move-requested', {
+        nodeId,
+        newParentId: targetParentId
+      });
+
+      closeModal();
+    };
+
+    // Handle Enter key in input
+    targetParentInput.onkeydown = (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        btnConfirm.click();
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        closeModal();
+      }
+    };
+
+    // Close on background click
+    modal.onclick = (e) => {
+      if (e.target === modal) {
+        closeModal();
+      }
+    };
+
+    // Show modal and focus input
+    modal.classList.remove('hidden');
+    targetParentInput.focus();
   }
 }
 

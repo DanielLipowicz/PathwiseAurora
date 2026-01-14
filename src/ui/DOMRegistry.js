@@ -70,7 +70,14 @@ export class DOMRegistry {
       confluenceExportModal: document.getElementById('confluenceExportModal'),
       confluenceExportText: document.getElementById('confluenceExportText'),
       btnCopyConfluenceExport: document.getElementById('btnCopyConfluenceExport'),
-      btnCloseConfluenceExport: document.getElementById('btnCloseConfluenceExport')
+      btnCloseConfluenceExport: document.getElementById('btnCloseConfluenceExport'),
+      moveNodeModal: document.getElementById('moveNodeModal'),
+      moveNodeCurrentId: document.getElementById('moveNodeCurrentId'),
+      moveNodeTargetParent: document.getElementById('moveNodeTargetParent'),
+      moveNodeParentsList: document.getElementById('moveNodeParentsList'),
+      btnCloseMoveNode: document.getElementById('btnCloseMoveNode'),
+      btnCancelMoveNode: document.getElementById('btnCancelMoveNode'),
+      btnConfirmMoveNode: document.getElementById('btnConfirmMoveNode')
     };
   }
 

@@ -126,7 +126,14 @@
         confluenceExportModal: document.getElementById("confluenceExportModal"),
         confluenceExportText: document.getElementById("confluenceExportText"),
         btnCopyConfluenceExport: document.getElementById("btnCopyConfluenceExport"),
-        btnCloseConfluenceExport: document.getElementById("btnCloseConfluenceExport")
+        btnCloseConfluenceExport: document.getElementById("btnCloseConfluenceExport"),
+        moveNodeModal: document.getElementById("moveNodeModal"),
+        moveNodeCurrentId: document.getElementById("moveNodeCurrentId"),
+        moveNodeTargetParent: document.getElementById("moveNodeTargetParent"),
+        moveNodeParentsList: document.getElementById("moveNodeParentsList"),
+        btnCloseMoveNode: document.getElementById("btnCloseMoveNode"),
+        btnCancelMoveNode: document.getElementById("btnCancelMoveNode"),
+        btnConfirmMoveNode: document.getElementById("btnConfirmMoveNode")
       };
     }
     /**
@@ -542,6 +549,42 @@
     }
   };
 
+  // src/utils/IdUtils.js
+  function compareIds(a, b) {
+    const aStr = String(a);
+    const bStr = String(b);
+    const aParts = aStr.split(".").map(Number);
+    const bParts = bStr.split(".").map(Number);
+    const maxLen = Math.max(aParts.length, bParts.length);
+    for (let i = 0; i < maxLen; i++) {
+      const aVal = aParts[i] || 0;
+      const bVal = bParts[i] || 0;
+      if (aVal !== bVal)
+        return aVal - bVal;
+    }
+    return 0;
+  }
+  function nextId(nodes) {
+    if (!nodes || nodes.length === 0)
+      return "1";
+    const rootNodes = nodes.filter((n) => !String(n.id).includes("."));
+    if (rootNodes.length === 0)
+      return "1";
+    const maxRoot = Math.max(...rootNodes.map((n) => Number(String(n.id).split(".")[0])));
+    return String(maxRoot + 1);
+  }
+  function nextChildId(parentId, nodes, getChildren2) {
+    const children = getChildren2(parentId, nodes);
+    if (children.length === 0)
+      return `${parentId}.1`;
+    const childNums = children.map((n) => {
+      const parts = String(n.id).split(".");
+      return Number(parts[parts.length - 1]);
+    });
+    const maxChild = Math.max(...childNums);
+    return `${parentId}.${maxChild + 1}`;
+  }
+
   // src/utils/NodeUtils.js
   function byId(id, nodes) {
     return nodes.find((n) => String(n.id) === String(id)) || null;
@@ -630,6 +673,103 @@
       }
       return { id: String(id), title: `#${id}`, body: "", comment: "", tags: [] };
     }).filter((entry) => entry !== null);
+  }
+  function migrateNode(nodes, nodeId, newParentId, desiredId = null) {
+    const nodeIdStr = String(nodeId);
+    const destParentStr = newParentId === null ? null : String(newParentId);
+    const nodeToMove = byId(nodeIdStr, nodes);
+    if (!nodeToMove) {
+      throw new Error(`Node ${nodeIdStr} not found`);
+    }
+    if (destParentStr !== null && !byId(destParentStr, nodes)) {
+      throw new Error(`Destination parent ${destParentStr} not found`);
+    }
+    if (destParentStr && (destParentStr === nodeIdStr || destParentStr.startsWith(nodeIdStr + "."))) {
+      throw new Error("Cannot move a node under itself or its descendant");
+    }
+    const srcParentStr = getParentId(nodeIdStr);
+    const desiredIndex = (() => {
+      if (desiredId === null || desiredId === void 0)
+        return null;
+      const raw = String(desiredId);
+      const last = raw.split(".").pop();
+      const num = Number(last);
+      if (!Number.isFinite(num) || num < 1) {
+        throw new Error(`Invalid desiredId: ${raw}`);
+      }
+      return Math.floor(num);
+    })();
+    const childrenByParent = /* @__PURE__ */ new Map();
+    const ensureList = (key) => {
+      if (!childrenByParent.has(key))
+        childrenByParent.set(key, []);
+      return childrenByParent.get(key);
+    };
+    for (const n of nodes) {
+      const idStr = String(n.id);
+      const p = getParentId(idStr);
+      ensureList(p).push(idStr);
+    }
+    for (const [p, list] of childrenByParent.entries()) {
+      list.sort(compareIds);
+      childrenByParent.set(p, list);
+    }
+    const srcSiblings = ensureList(srcParentStr);
+    const srcIdx = srcSiblings.findIndex((id) => id === nodeIdStr);
+    if (srcIdx === -1) {
+      throw new Error(`Node ${nodeIdStr} not found in its parent's child list`);
+    }
+    srcSiblings.splice(srcIdx, 1);
+    const destSiblings = ensureList(destParentStr);
+    const insertAt1Based = desiredIndex ?? destSiblings.length + 1;
+    const boundedInsertAt = Math.min(Math.max(insertAt1Based, 1), destSiblings.length + 1);
+    destSiblings.splice(boundedInsertAt - 1, 0, nodeIdStr);
+    const idMapping = /* @__PURE__ */ new Map();
+    const visited = /* @__PURE__ */ new Set();
+    const roots = ensureList(null);
+    const assignSubtree = (oldId, newId) => {
+      idMapping.set(oldId, newId);
+      visited.add(oldId);
+      const kids = ensureList(oldId);
+      for (let i = 0; i < kids.length; i++) {
+        const childOldId = kids[i];
+        assignSubtree(childOldId, `${newId}.${i + 1}`);
+      }
+    };
+    for (let i = 0; i < roots.length; i++) {
+      assignSubtree(roots[i], String(i + 1));
+    }
+    const allIds = nodes.map((n) => String(n.id));
+    const unvisitedRoots = allIds.filter((id) => !visited.has(id)).sort(compareIds);
+    let nextRootNum = roots.length;
+    for (const id of unvisitedRoots) {
+      if (visited.has(id))
+        continue;
+      nextRootNum += 1;
+      assignSubtree(id, String(nextRootNum));
+    }
+    const updated = nodes.map((n) => {
+      const oldId = String(n.id);
+      const newId = idMapping.get(oldId);
+      if (!newId) {
+        throw new Error(`Failed to assign new ID for node ${oldId}`);
+      }
+      return {
+        id: newId,
+        title: n.title,
+        body: n.body,
+        choices: (n.choices || []).map((c) => {
+          const oldTo = String(c.to);
+          const mappedTo = idMapping.get(oldTo) || oldTo;
+          return {
+            label: c.label,
+            to: mappedTo
+          };
+        })
+      };
+    });
+    updated.sort((a, b) => compareIds(a.id, b.id));
+    return updated;
   }
 
   // src/utils/EmailSummaryGenerator.js
@@ -853,42 +993,6 @@
     if (!text)
       return "";
     return String(text).replace(/\|/g, "\\|");
-  }
-
-  // src/utils/IdUtils.js
-  function compareIds(a, b) {
-    const aStr = String(a);
-    const bStr = String(b);
-    const aParts = aStr.split(".").map(Number);
-    const bParts = bStr.split(".").map(Number);
-    const maxLen = Math.max(aParts.length, bParts.length);
-    for (let i = 0; i < maxLen; i++) {
-      const aVal = aParts[i] || 0;
-      const bVal = bParts[i] || 0;
-      if (aVal !== bVal)
-        return aVal - bVal;
-    }
-    return 0;
-  }
-  function nextId(nodes) {
-    if (!nodes || nodes.length === 0)
-      return "1";
-    const rootNodes = nodes.filter((n) => !String(n.id).includes("."));
-    if (rootNodes.length === 0)
-      return "1";
-    const maxRoot = Math.max(...rootNodes.map((n) => Number(String(n.id).split(".")[0])));
-    return String(maxRoot + 1);
-  }
-  function nextChildId(parentId, nodes, getChildren2) {
-    const children = getChildren2(parentId, nodes);
-    if (children.length === 0)
-      return `${parentId}.1`;
-    const childNums = children.map((n) => {
-      const parts = String(n.id).split(".");
-      return Number(parts[parts.length - 1]);
-    });
-    const maxChild = Math.max(...childNums);
-    return `${parentId}.${maxChild + 1}`;
   }
 
   // src/services/ImportExportService.js
@@ -1378,6 +1482,9 @@
       this.events.on("node:create-requested", () => {
         this.createNode();
       });
+      this.events.on("node:move-requested", ({ nodeId, newParentId }) => {
+        this.moveNode(nodeId, newParentId);
+      });
     }
     /**
      * Create a new node
@@ -1461,6 +1568,26 @@
       this.state.setGraph(graph);
       this.events.emit("validation:requested");
       this.events.emit("node:child-created", { childId, child });
+    }
+    /**
+     * Move a node to another parent (or to root)
+     * @param {string|number} nodeId - Node to move
+     * @param {string|number|null} newParentId - New parent node id, or null for root
+     */
+    moveNode(nodeId, newParentId) {
+      const graph = this.state.getGraph();
+      const session = this.state.getSession();
+      if (!graph || !session)
+        return;
+      try {
+        graph.nodes = migrateNode(graph.nodes, nodeId, newParentId);
+      } catch (e) {
+        alert(`Move failed: ${e.message}`);
+        return;
+      }
+      this.storage.save(graph.toJSON(), session.toJSON());
+      this.state.setGraph(graph);
+      this.events.emit("validation:requested");
     }
   };
 
@@ -2311,6 +2438,7 @@
             </div>
             <div class="node-card-actions">
               <button class="btn-node-edit" data-action="edit" data-node-id="${escapeHtml2(String(node.id))}" title="Edit">\u270F\uFE0F</button>
+              <button class="btn-node-move" data-action="move" data-node-id="${escapeHtml2(String(node.id))}" title="Move">\u2194\uFE0F</button>
               <button class="btn-node-clone" data-action="clone" data-node-id="${escapeHtml2(String(node.id))}" title="Clone">\u{1F4CB}</button>
               <button class="btn-node-delete" data-action="delete" data-node-id="${escapeHtml2(String(node.id))}" title="Delete">\u{1F5D1}\uFE0F</button>
             </div>
@@ -2665,6 +2793,14 @@
           }
         };
       });
+      container.querySelectorAll(".btn-node-move").forEach((btn) => {
+        btn.onclick = () => {
+          const nodeId = btn.dataset.nodeId;
+          if (nodeId) {
+            this.showMoveNodeModal(nodeId);
+          }
+        };
+      });
       container.querySelectorAll(".btn-node-delete").forEach((btn) => {
         btn.onclick = () => {
           const nodeId = btn.dataset.nodeId;
@@ -2838,6 +2974,75 @@
       setTimeout(() => {
         this.focusOnNode(sourceNodeId);
       }, 100);
+    }
+    /**
+     * Show modal for moving a node
+     * @param {string|number} nodeId - ID of the node to move
+     */
+    showMoveNodeModal(nodeId) {
+      const modal = this.dom.get("moveNodeModal");
+      const currentIdSpan = this.dom.get("moveNodeCurrentId");
+      const targetParentInput = this.dom.get("moveNodeTargetParent");
+      const parentsList = this.dom.get("moveNodeParentsList");
+      const btnClose = this.dom.get("btnCloseMoveNode");
+      const btnCancel = this.dom.get("btnCancelMoveNode");
+      const btnConfirm = this.dom.get("btnConfirmMoveNode");
+      if (!modal || !currentIdSpan || !targetParentInput || !parentsList || !btnClose || !btnCancel || !btnConfirm) {
+        alert("Move node modal elements not found.");
+        return;
+      }
+      const graph = this.state.getGraph();
+      if (!graph)
+        return;
+      currentIdSpan.textContent = `#${nodeId}`;
+      parentsList.innerHTML = "";
+      const nodeIdStr = String(nodeId);
+      const availableParents = graph.nodes.filter((n) => {
+        const nIdStr = String(n.id);
+        return nIdStr !== nodeIdStr && !nIdStr.startsWith(nodeIdStr + ".");
+      });
+      availableParents.forEach((node) => {
+        const option = document.createElement("option");
+        option.value = String(node.id);
+        option.textContent = `#${node.id} - ${node.title}`;
+        parentsList.appendChild(option);
+      });
+      targetParentInput.value = "";
+      const closeModal = () => {
+        modal.classList.add("hidden");
+        targetParentInput.value = "";
+        btnClose.onclick = null;
+        btnCancel.onclick = null;
+        btnConfirm.onclick = null;
+        targetParentInput.onkeydown = null;
+      };
+      btnClose.onclick = closeModal;
+      btnCancel.onclick = closeModal;
+      btnConfirm.onclick = () => {
+        const trimmed = String(targetParentInput.value || "").trim();
+        const targetParentId = trimmed ? trimmed : null;
+        this.events.emit("node:move-requested", {
+          nodeId,
+          newParentId: targetParentId
+        });
+        closeModal();
+      };
+      targetParentInput.onkeydown = (e) => {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          btnConfirm.click();
+        } else if (e.key === "Escape") {
+          e.preventDefault();
+          closeModal();
+        }
+      };
+      modal.onclick = (e) => {
+        if (e.target === modal) {
+          closeModal();
+        }
+      };
+      modal.classList.remove("hidden");
+      targetParentInput.focus();
     }
   };
 
